@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Activity, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Activity, Lock, Mail, AlertCircle, Shield, Crown, User } from 'lucide-react';
 
 interface LoginProps {
   onRegisterClick: () => void;
@@ -16,14 +16,19 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await performLogin(email, password);
+  };
+
+  const performLogin = async (e: string, p: string) => {
     setError('');
     setLoading(true);
     // Trim inputs to prevent accidental whitespace issues
-    const success = await login(email.trim(), password.trim());
+    const success = await login(e.trim(), p.trim());
     if (!success) {
-      setError('Invalid credentials. Check the hints below.');
+      setError('Invalid credentials. If using a new database, try registering first.');
+      setLoading(false);
     }
-    setLoading(false);
+    // If success, AuthContext state change will trigger re-render/redirect in App.tsx
   };
 
   const handleGoogleLogin = async () => {
@@ -31,6 +36,16 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick }) => {
     setLoading(true);
     await loginWithGoogle();
     setLoading(false);
+  };
+
+  const handleQuickLogin = (role: 'SUPER_ADMIN' | 'ADMIN' | 'USER') => {
+      if (role === 'SUPER_ADMIN') {
+          performLogin('wailafmohammed@gmail.com', 'Albasha@49#');
+      } else if (role === 'ADMIN') {
+          performLogin('admin@wealthos.com', 'admin123');
+      } else {
+          performLogin('user@example.com', 'user123');
+      }
   };
 
   return (
@@ -42,6 +57,34 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick }) => {
            </div>
            <h1 className="text-3xl font-bold text-white tracking-tight">Welcome Back</h1>
            <p className="text-slate-400 mt-2">Sign in to your WealthOS dashboard</p>
+        </div>
+
+        {/* Quick Login Buttons */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+            <button 
+                onClick={() => handleQuickLogin('SUPER_ADMIN')}
+                className="flex flex-col items-center justify-center p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl hover:bg-amber-500/20 transition-all group"
+                title="Click to login as Super Admin"
+            >
+                <Crown className="w-5 h-5 text-amber-500 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold text-amber-400">Super Admin</span>
+            </button>
+            <button 
+                onClick={() => handleQuickLogin('ADMIN')}
+                className="flex flex-col items-center justify-center p-3 bg-brand-500/10 border border-brand-500/20 rounded-xl hover:bg-brand-500/20 transition-all group"
+                title="Click to login as Admin"
+            >
+                <Shield className="w-5 h-5 text-brand-500 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold text-brand-400">Admin</span>
+            </button>
+            <button 
+                onClick={() => handleQuickLogin('USER')}
+                className="flex flex-col items-center justify-center p-3 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-all group"
+                title="Click to login as Standard User"
+            >
+                <User className="w-5 h-5 text-slate-400 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold text-slate-300">User</span>
+            </button>
         </div>
 
         {error && (
@@ -140,23 +183,6 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick }) => {
           <button onClick={onRegisterClick} className="text-white font-medium hover:underline decoration-brand-500 underline-offset-4">
             Create Account
           </button>
-        </div>
-
-        {/* Demo Credentials Hint */}
-        <div className="mt-8 p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-500">
-            <div className="font-bold text-slate-300 mb-1">Demo Credentials:</div>
-            <div className="flex justify-between py-1 border-b border-slate-800/50">
-                <span className="text-amber-500 font-medium">Super Admin: wailafmohammed@gmail.com</span>
-                <span className="text-amber-500 font-medium">Pass: Albasha@49#</span>
-            </div>
-            <div className="flex justify-between py-1">
-                <span>Admin: admin@wealthos.com</span>
-                <span>Pass: admin123</span>
-            </div>
-            <div className="flex justify-between py-1">
-                <span>User: user@example.com</span>
-                <span>Pass: any</span>
-            </div>
         </div>
       </div>
     </div>

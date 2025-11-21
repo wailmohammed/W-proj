@@ -5,8 +5,35 @@ import { Portfolio } from '../types';
 // Initialize the client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Simple cache to prevent 429s
-const portfolioInsightCache: Record<string, { hash: string, insight: string }> = {};
+// Persistent Cache Helpers to prevent 429s across reloads
+const CACHE_PREFIX = 'wealthos_cache_v1_';
+
+const getFromCache = <T>(key: string): T | null => {
+    try {
+        const item = localStorage.getItem(CACHE_PREFIX + key);
+        if (item) {
+            const { data, timestamp } = JSON.parse(item);
+            // Cache expires after 24 hours
+            if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+                return data;
+            }
+        }
+    } catch (e) {
+        console.warn('Cache read error', e);
+    }
+    return null;
+};
+
+const saveToCache = (key: string, data: any) => {
+    try {
+        localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({
+            data,
+            timestamp: Date.now()
+        }));
+    } catch (e) {
+        console.warn('Cache write error', e);
+    }
+};
 
 const generatePortfolioHash = (portfolio: Portfolio) => {
     return `${portfolio.id}-${portfolio.holdings.length}-${portfolio.totalValue.toFixed(0)}-${portfolio.cashBalance.toFixed(0)}`;
@@ -14,7 +41,7 @@ const generatePortfolioHash = (portfolio: Portfolio) => {
 
 // Helper to handle API errors
 const handleGeminiError = (error: any, defaultMessage: string): string => {
-    console.error("Gemini API Error:", error);
+    console.warn("Gemini API Error:", error);
     
     let errorStr = '';
     try {
@@ -29,7 +56,7 @@ const handleGeminiError = (error: any, defaultMessage: string): string => {
         errorStr.toLowerCase().includes('quota') || 
         errorStr.includes('RESOURCE_EXHAUSTED')
     ) {
-        return "⚠️ AI Usage Limit Reached. Please try again in a few minutes.";
+        return "⚠️ AI Usage Limit Reached. Showing cached/fallback data.";
     }
 
     return defaultMessage;
@@ -37,11 +64,11 @@ const handleGeminiError = (error: any, defaultMessage: string): string => {
 
 export const generatePortfolioInsight = async (portfolio: Portfolio): Promise<string> => {
   const hash = generatePortfolioHash(portfolio);
+  const cacheKey = `insight_${hash}`;
   
-  // Return cached version if available and portfolio hasn't changed significantly
-  if (portfolioInsightCache[portfolio.id]?.hash === hash) {
-      return portfolioInsightCache[portfolio.id].insight;
-  }
+  // 1. Check persistent cache
+  const cached = getFromCache<string>(cacheKey);
+  if (cached) return cached;
 
   try {
     // Prepare a summary of the portfolio for the prompt
@@ -68,8 +95,8 @@ export const generatePortfolioInsight = async (portfolio: Portfolio): Promise<st
 
     const text = response.text || "Unable to generate insight at this time.";
     
-    // Cache the result
-    portfolioInsightCache[portfolio.id] = { hash, insight: text };
+    // 2. Save to cache
+    saveToCache(cacheKey, text);
     
     return text;
   } catch (error) {
@@ -78,6 +105,12 @@ export const generatePortfolioInsight = async (portfolio: Portfolio): Promise<st
 };
 
 export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: string[], risks: string[] }> => {
+  const cacheKey = `risks_${symbol}`;
+  
+  // 1. Check persistent cache
+  const cached = getFromCache<{ strengths: string[], risks: string[] }>(cacheKey);
+  if (cached) return cached;
+
   try {
     const prompt = `Analyze ${symbol} for an investor. Provide 3 key distinct strengths (bull case) and 3 key distinct risks (bear case). Keep them concise.`;
     
@@ -103,10 +136,15 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
     });
     
     const text = response.text;
-    if (!text) return { strengths: [], risks: [] };
-    return JSON.parse(text);
+    if (!text) throw new Error("No text returned");
+    
+    const result = JSON.parse(text);
+    
+    // 2. Save to cache
+    saveToCache(cacheKey, result);
+    
+    return result;
   } catch (error) {
-    // Log the specific error for debugging, including quota issues
     handleGeminiError(error, "");
     
     // Fallback to generic data on error (including rate limit) to keep UI intact
@@ -118,12 +156,24 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
 };
 
 export const analyzeStock = async (symbol: string): Promise<string> => {
+  const cacheKey = `analysis_${symbol}`;
+  
+  // 1. Check persistent cache
+  const cached = getFromCache<string>(cacheKey);
+  if (cached) return cached;
+
   try {
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: `Provide a concise fundamental analysis of ${symbol} in 100 words. Focus on recent growth catalysts and primary risks.`,
     });
-    return response.text || "Analysis unavailable.";
+    
+    const text = response.text || "Analysis unavailable.";
+    
+    // 2. Save to cache
+    saveToCache(cacheKey, text);
+    
+    return text;
   } catch (error) {
       return handleGeminiError(error, "Analysis unavailable.");
   }

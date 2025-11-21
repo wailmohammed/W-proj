@@ -1,16 +1,35 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Search, Plus, TrendingUp, DollarSign, Calendar } from 'lucide-react';
+import { X, Search, Plus, TrendingUp, DollarSign, Calendar, Car, Home, CreditCard, Landmark } from 'lucide-react';
 import { MOCK_MARKET_ASSETS } from '../constants';
 import { usePortfolio } from '../context/PortfolioContext';
+import { ManualAssetType } from '../types';
+
+type ModalTab = 'investment' | 'asset' | 'liability';
 
 const AddAssetModal: React.FC = () => {
-  const { closeAddAssetModal, addTransaction, preSelectedAssetTicker } = usePortfolio();
+  const { closeAddAssetModal, addTransaction, addManualAsset, addLiability, preSelectedAssetTicker } = usePortfolio();
+  const [activeTab, setActiveTab] = useState<ModalTab>('investment');
+  
+  // Investment State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [shares, setShares] = useState('');
   const [price, setPrice] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Manual Asset State
+  const [assetName, setAssetName] = useState('');
+  const [assetType, setAssetType] = useState<ManualAssetType>('Real Estate');
+  const [assetValue, setAssetValue] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  
+  // Liability State
+  const [liabilityName, setLiabilityName] = useState('');
+  const [liabilityType, setLiabilityType] = useState<'Mortgage' | 'Loan' | 'Credit Card'>('Mortgage');
+  const [liabilityAmount, setLiabilityAmount] = useState('');
+  const [interestRate, setInterestRate] = useState('');
+  const [monthlyPayment, setMonthlyPayment] = useState('');
 
   // Pre-select asset if ticker is passed
   useEffect(() => {
@@ -22,10 +41,11 @@ const AddAssetModal: React.FC = () => {
           } else {
               setSearchTerm(preSelectedAssetTicker);
           }
+          setActiveTab('investment');
       }
   }, [preSelectedAssetTicker]);
 
-  // Filter logic
+  // Filter logic for Investments
   const results = searchTerm.length > 0 
     ? MOCK_MARKET_ASSETS.filter(a => 
         a.symbol.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -35,10 +55,39 @@ const AddAssetModal: React.FC = () => {
 
   const selectedAsset = MOCK_MARKET_ASSETS.find(a => a.id === selectedAssetId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInvestmentSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (selectedAssetId && shares && price) {
           addTransaction(selectedAssetId, 'BUY', parseFloat(shares), parseFloat(price), date);
+          closeAddAssetModal();
+      }
+  };
+
+  const handleAssetSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (assetName && assetValue) {
+          addManualAsset({
+              name: assetName,
+              type: assetType,
+              value: parseFloat(assetValue),
+              currency: 'USD',
+              purchaseDate: date,
+              purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined
+          });
+          closeAddAssetModal();
+      }
+  };
+
+  const handleLiabilitySubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (liabilityName && liabilityAmount) {
+          addLiability({
+              name: liabilityName,
+              type: liabilityType,
+              amount: parseFloat(liabilityAmount),
+              interestRate: parseFloat(interestRate) || 0,
+              monthlyPayment: parseFloat(monthlyPayment) || 0
+          });
           closeAddAssetModal();
       }
   };
@@ -48,144 +97,329 @@ const AddAssetModal: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10">
-            <h3 className="text-xl font-bold text-white">Add Transaction</h3>
+            <h3 className="text-xl font-bold text-white">Add to Portfolio</h3>
             <button onClick={closeAddAssetModal} className="text-slate-400 hover:text-white transition-colors">
                 <X className="w-6 h-6" />
             </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-slate-800">
+            <button 
+                onClick={() => setActiveTab('investment')}
+                className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-2 ${activeTab === 'investment' ? 'bg-slate-800 text-white border-b-2 border-brand-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+            >
+                <TrendingUp className="w-4 h-4" /> Investment
+            </button>
+            <button 
+                onClick={() => setActiveTab('asset')}
+                className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-2 ${activeTab === 'asset' ? 'bg-slate-800 text-white border-b-2 border-brand-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+            >
+                <Home className="w-4 h-4" /> Asset
+            </button>
+            <button 
+                onClick={() => setActiveTab('liability')}
+                className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-2 ${activeTab === 'liability' ? 'bg-slate-800 text-white border-b-2 border-brand-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+            >
+                <CreditCard className="w-4 h-4" /> Liability
+            </button>
+        </div>
+
         <div className="p-6 overflow-y-auto">
-            {/* Step 1: Search */}
-            {!selectedAsset ? (
-                <div className="space-y-6">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
-                        <input 
-                            autoFocus
-                            type="text" 
-                            placeholder="Search by symbol or name..." 
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:ring-1 focus:ring-brand-500 focus:border-brand-500 outline-none"
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    
-                    <div className="space-y-2">
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                            {searchTerm ? 'Search Results' : 'Popular Assets'}
+            {/* INVESTMENT TAB */}
+            {activeTab === 'investment' && (
+                !selectedAsset ? (
+                    <div className="space-y-6">
+                        <div className="relative">
+                            <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
+                            <input 
+                                autoFocus
+                                type="text" 
+                                placeholder="Search by symbol or name..." 
+                                className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:ring-1 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                        {(searchTerm ? results : MOCK_MARKET_ASSETS.slice(0, 5)).map(asset => (
+                        
+                        <div className="space-y-2">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                {searchTerm ? 'Search Results' : 'Popular Assets'}
+                            </div>
+                            {(searchTerm ? results : MOCK_MARKET_ASSETS.slice(0, 5)).map(asset => (
+                                <button 
+                                    key={asset.id}
+                                    onClick={() => {
+                                        setSelectedAssetId(asset.id);
+                                        setPrice(asset.currentPrice.toString());
+                                    }}
+                                    className="w-full flex items-center justify-between p-3 hover:bg-slate-800 rounded-xl transition-colors group text-left border border-transparent hover:border-slate-700"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-slate-400 border border-slate-700 group-hover:border-brand-500/30 group-hover:text-brand-400 transition-colors">
+                                            {asset.symbol[0]}
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-white">{asset.symbol}</div>
+                                            <div className="text-xs text-slate-500">{asset.name}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-medium text-white">${asset.currentPrice}</div>
+                                        <div className="text-xs text-emerald-400 flex items-center justify-end gap-1">
+                                            <Plus className="w-3 h-3" /> Add
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                            {searchTerm && results.length === 0 && (
+                                <div className="text-center py-8 text-slate-500">No assets found.</div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    /* Step 2: Investment Details */
+                    <form onSubmit={handleInvestmentSubmit} className="space-y-6 animate-fade-in">
+                        <div className="flex items-center gap-4 p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                            <div className="w-12 h-12 rounded-lg bg-brand-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-brand-600/20">
+                                {selectedAsset.symbol[0]}
+                            </div>
+                            <div className="flex-1">
+                                <div className="text-lg font-bold text-white">{selectedAsset.name}</div>
+                                <div className="text-sm text-slate-400">{selectedAsset.symbol} • {selectedAsset.assetType}</div>
+                            </div>
                             <button 
-                                key={asset.id}
-                                onClick={() => {
-                                    setSelectedAssetId(asset.id);
-                                    setPrice(asset.currentPrice.toString());
-                                }}
-                                className="w-full flex items-center justify-between p-3 hover:bg-slate-800 rounded-xl transition-colors group text-left border border-transparent hover:border-slate-700"
+                                type="button" 
+                                onClick={() => setSelectedAssetId(null)} 
+                                className="text-xs text-brand-400 hover:underline"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-slate-400 border border-slate-700 group-hover:border-brand-500/30 group-hover:text-brand-400 transition-colors">
-                                        {asset.symbol[0]}
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-white">{asset.symbol}</div>
-                                        <div className="text-xs text-slate-500">{asset.name}</div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="font-medium text-white">${asset.currentPrice}</div>
-                                    <div className="text-xs text-emerald-400 flex items-center justify-end gap-1">
-                                        <Plus className="w-3 h-3" /> Add
-                                    </div>
-                                </div>
+                                Change
                             </button>
-                        ))}
-                        {searchTerm && results.length === 0 && (
-                            <div className="text-center py-8 text-slate-500">No assets found.</div>
-                        )}
-                    </div>
-                </div>
-            ) : (
-                /* Step 2: Details */
-                <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
-                    <div className="flex items-center gap-4 p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                        <div className="w-12 h-12 rounded-lg bg-brand-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-brand-600/20">
-                            {selectedAsset.symbol[0]}
                         </div>
-                        <div className="flex-1">
-                            <div className="text-lg font-bold text-white">{selectedAsset.name}</div>
-                            <div className="text-sm text-slate-400">{selectedAsset.symbol} • {selectedAsset.assetType}</div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Quantity</label>
+                                <div className="relative">
+                                    <TrendingUp className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        required
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none"
+                                        placeholder="0.00"
+                                        value={shares}
+                                        onChange={e => setShares(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Price per Share</label>
+                                <div className="relative">
+                                    <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        required
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none"
+                                        placeholder="0.00"
+                                        value={price}
+                                        onChange={e => setPrice(e.target.value)}
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <button 
-                            type="button" 
-                            onClick={() => setSelectedAssetId(null)} 
-                            className="text-xs text-brand-400 hover:underline"
-                        >
-                            Change
-                        </button>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Date</label>
+                            <div className="relative">
+                                <Calendar className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                <input 
+                                    type="date" 
+                                    required
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none [color-scheme:dark]"
+                                    value={date}
+                                    onChange={e => setDate(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-4">
+                            <div className="flex justify-between text-sm mb-4 px-2">
+                                <span className="text-slate-400">Total Cost</span>
+                                <span className="font-bold text-white text-lg">
+                                    ${(parseFloat(shares || '0') * parseFloat(price || '0')).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <button 
+                                type="submit"
+                                className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2"
+                            >
+                                <Plus className="w-5 h-5" /> Add Transaction
+                            </button>
+                        </div>
+                    </form>
+                )
+            )}
+
+            {/* ASSET TAB */}
+            {activeTab === 'asset' && (
+                <form onSubmit={handleAssetSubmit} className="space-y-5 animate-fade-in">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1.5">Asset Name</label>
+                        <input 
+                            type="text" 
+                            required
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none"
+                            placeholder="e.g. Downtown Apartment, Rolex Submariner"
+                            value={assetName}
+                            onChange={e => setAssetName(e.target.value)}
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Quantity</label>
-                            <div className="relative">
-                                <TrendingUp className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                                <input 
-                                    type="number" 
-                                    step="any"
-                                    required
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none"
-                                    placeholder="0.00"
-                                    value={shares}
-                                    onChange={e => setShares(e.target.value)}
-                                />
-                            </div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Type</label>
+                            <select 
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none"
+                                value={assetType}
+                                onChange={e => setAssetType(e.target.value as ManualAssetType)}
+                            >
+                                <option value="Real Estate">Real Estate</option>
+                                <option value="Vehicle">Vehicle</option>
+                                <option value="Art/Collectibles">Art/Collectibles</option>
+                                <option value="Private Equity">Private Equity</option>
+                                <option value="Other">Other</option>
+                            </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Price per Share</label>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Current Value</label>
                             <div className="relative">
                                 <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
                                 <input 
                                     type="number" 
-                                    step="any"
                                     required
                                     className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none"
                                     placeholder="0.00"
-                                    value={price}
-                                    onChange={e => setPrice(e.target.value)}
+                                    value={assetValue}
+                                    onChange={e => setAssetValue(e.target.value)}
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1.5">Date</label>
-                        <div className="relative">
-                            <Calendar className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Purchase Date</label>
                             <input 
                                 type="date" 
-                                required
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none [color-scheme:dark]"
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:border-brand-500 outline-none [color-scheme:dark]"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
                             />
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Purchase Price</label>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none"
+                                    placeholder="Optional"
+                                    value={purchasePrice}
+                                    onChange={e => setPurchasePrice(e.target.value)}
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="pt-4">
-                        <div className="flex justify-between text-sm mb-4 px-2">
-                            <span className="text-slate-400">Total Cost</span>
-                            <span className="font-bold text-white text-lg">
-                                ${(parseFloat(shares || '0') * parseFloat(price || '0')).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                        <button 
-                            type="submit"
-                            className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2"
-                        >
-                            <Plus className="w-5 h-5" /> Add Transaction
-                        </button>
+                    <button 
+                        type="submit"
+                        className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2 mt-4"
+                    >
+                        <Plus className="w-5 h-5" /> Add Asset
+                    </button>
+                </form>
+            )}
+
+            {/* LIABILITY TAB */}
+            {activeTab === 'liability' && (
+                <form onSubmit={handleLiabilitySubmit} className="space-y-5 animate-fade-in">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1.5">Liability Name</label>
+                        <input 
+                            type="text" 
+                            required
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none"
+                            placeholder="e.g. Chase Mortgage, Student Loan"
+                            value={liabilityName}
+                            onChange={e => setLiabilityName(e.target.value)}
+                        />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Type</label>
+                            <select 
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none"
+                                value={liabilityType}
+                                onChange={e => setLiabilityType(e.target.value as any)}
+                            >
+                                <option value="Mortgage">Mortgage</option>
+                                <option value="Loan">Loan</option>
+                                <option value="Credit Card">Credit Card</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Amount Owed</label>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                <input 
+                                    type="number" 
+                                    required
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none"
+                                    placeholder="0.00"
+                                    value={liabilityAmount}
+                                    onChange={e => setLiabilityAmount(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Interest Rate (%)</label>
+                            <input 
+                                type="number" 
+                                step="0.01"
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:border-brand-500 outline-none"
+                                placeholder="e.g. 4.5"
+                                value={interestRate}
+                                onChange={e => setInterestRate(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5">Monthly Payment</label>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-brand-500 outline-none"
+                                    placeholder="Optional"
+                                    value={monthlyPayment}
+                                    onChange={e => setMonthlyPayment(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <button 
+                        type="submit"
+                        className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 mt-4"
+                    >
+                        <Plus className="w-5 h-5" /> Add Liability
+                    </button>
                 </form>
             )}
         </div>

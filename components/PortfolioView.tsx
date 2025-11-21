@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, LineChart, Line, ComposedChart, Legend } from 'recharts';
 import { usePortfolio } from '../context/PortfolioContext';
 import { PieChart as PieIcon, List, Layers, Globe, Download, Map as MapIcon, History, TrendingUp, Scale, AlertCircle, RefreshCcw, LayoutGrid, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import SnowflakeChart from './SnowflakeChart';
@@ -10,7 +10,8 @@ const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 const PortfolioView: React.FC = () => {
   const { activePortfolio, viewStock } = usePortfolio();
-  const [viewMode, setViewMode] = useState<'allocation' | 'holdings' | 'transactions' | 'performance' | 'rebalancing'>('holdings');
+  // Default to 'allocation' as requested
+  const [viewMode, setViewMode] = useState<'allocation' | 'holdings' | 'transactions' | 'performance' | 'rebalancing'>('allocation');
   const [holdingViewType, setHoldingViewType] = useState<'list' | 'cards'>('cards');
   
   // Rebalancing State
@@ -86,18 +87,42 @@ const PortfolioView: React.FC = () => {
   const assetData = Array.from(assetDataMap.entries()).map(([name, value]) => ({ name, value }));
   const countryData = Array.from(countryDataMap.entries()).map(([name, value]) => ({ name, value }));
 
-  // Generate Mock Performance Data
-  const performanceData = Array.from({ length: 90 }, (_, i) => {
-      const day = 90 - i;
-      const volatility = 0.02;
-      const trend = 1.001;
-      const randomFactor = 1 + (Math.random() * volatility - volatility / 2);
-      const value = activePortfolio.totalValue * (1 / Math.pow(trend, i)) * randomFactor;
-      return {
-          date: `Day -${day}`,
-          value: Math.round(value)
-      };
-  }).reverse();
+  // Generate Mock Performance Data with Benchmark (1 Year / 365 Days)
+  const generateChartData = () => {
+      const data = [];
+      // Simulate starting from 1 year ago
+      let currentVal = activePortfolio.totalValue * 0.82; // Start ~18% lower
+      let currentBench = activePortfolio.totalValue * 0.88; // S&P starts ~12% lower
+      
+      for(let i=0; i<365; i++) {
+          const date = new Date();
+          date.setDate(date.getDate() - (365 - i));
+          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          
+          // Daily movement simulation
+          // Portfolio slightly more volatile
+          const move = 1 + (Math.random() * 0.03 - 0.014); 
+          // Benchmark smoother
+          const benchMove = 1 + (Math.random() * 0.02 - 0.0095); 
+          
+          currentVal = currentVal * move;
+          currentBench = currentBench * benchMove;
+          
+          // Smooth convergence to current actual value at the end
+          if (i > 350) {
+              currentVal = currentVal + (activePortfolio.totalValue - currentVal) / (365 - i);
+          }
+
+          data.push({
+              date: dateStr,
+              value: Math.round(currentVal),
+              benchmark: Math.round(currentBench)
+          });
+      }
+      return data;
+  };
+  
+  const chartData = generateChartData();
 
   const handleExport = () => {
       const headers = ['Symbol,Name,Shares,AvgPrice,CurrentPrice,Value,Sector,Country'];
@@ -153,28 +178,28 @@ const PortfolioView: React.FC = () => {
             </button>
             <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 overflow-x-auto">
                 <button 
-                    onClick={() => setViewMode('holdings')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${viewMode === 'holdings' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                    <LayoutGrid className="w-4 h-4" /> Overview
-                </button>
-                <button 
                     onClick={() => setViewMode('allocation')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${viewMode === 'allocation' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 >
                     <PieIcon className="w-4 h-4" /> Allocation
                 </button>
                 <button 
-                    onClick={() => setViewMode('rebalancing')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${viewMode === 'rebalancing' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                    <Scale className="w-4 h-4" /> Rebalancing
-                </button>
-                <button 
                     onClick={() => setViewMode('performance')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${viewMode === 'performance' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 >
                     <History className="w-4 h-4" /> Performance
+                </button>
+                <button 
+                    onClick={() => setViewMode('holdings')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${viewMode === 'holdings' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    <LayoutGrid className="w-4 h-4" /> Overview
+                </button>
+                <button 
+                    onClick={() => setViewMode('rebalancing')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${viewMode === 'rebalancing' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    <Scale className="w-4 h-4" /> Rebalancing
                 </button>
                  <button 
                     onClick={() => setViewMode('transactions')}
@@ -186,9 +211,299 @@ const PortfolioView: React.FC = () => {
         </div>
       </div>
 
-      {/* HOLDINGS & OVERVIEW (Default) */}
+      {/* ALLOCATION VIEW (Default) */}
+      {viewMode === 'allocation' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+              {/* Sector Allocation */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-brand-500" /> Sector Exposure
+                  </h3>
+                  <div className="h-[220px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                              <Pie
+                                  data={sectorData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={50}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                              >
+                                  {sectorData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#0f172a" strokeWidth={2} />
+                                  ))}
+                              </Pie>
+                              <RechartsTooltip 
+                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
+                                  formatter={(value: number) => `$${value.toLocaleString()}`}
+                              />
+                          </PieChart>
+                      </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-4">
+                      {sectorData.map((entry, index) => (
+                          <div key={entry.name} className="flex items-center gap-2 text-xs">
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                              <span className="text-slate-300 truncate">{entry.name}</span>
+                              <span className="text-slate-500 ml-auto">
+                                {Math.round((entry.value / activePortfolio.totalValue) * 100)}%
+                              </span>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+
+              {/* Geographical Allocation */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-emerald-500" /> Geography
+                  </h3>
+                  <div className="h-[220px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                              <Pie
+                                  data={countryData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={50}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                              >
+                                  {countryData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} stroke="#0f172a" strokeWidth={2} />
+                                  ))}
+                              </Pie>
+                              <RechartsTooltip 
+                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
+                                  formatter={(value: number) => `$${value.toLocaleString()}`}
+                              />
+                          </PieChart>
+                      </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-4">
+                      {countryData.map((entry, index) => (
+                          <div key={entry.name} className="flex items-center gap-2 text-xs">
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[(index + 3) % COLORS.length] }}></div>
+                              <span className="text-slate-300 truncate">{entry.name}</span>
+                              <span className="text-slate-500 ml-auto">
+                                {Math.round((entry.value / activePortfolio.totalValue) * 100)}%
+                              </span>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+
+              {/* Asset Class */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                      <MapIcon className="w-5 h-5 text-amber-500" /> Asset Class
+                  </h3>
+                  <div className="h-[220px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                              <Pie
+                                  data={assetData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={50}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                              >
+                                  {assetData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={COLORS[(index + 5) % COLORS.length]} stroke="#0f172a" strokeWidth={2} />
+                                  ))}
+                              </Pie>
+                              <RechartsTooltip 
+                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
+                                  formatter={(value: number) => `$${value.toLocaleString()}`}
+                              />
+                          </PieChart>
+                      </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-4">
+                      {assetData.map((entry, index) => (
+                          <div key={entry.name} className="flex items-center gap-2 text-xs">
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[(index + 5) % COLORS.length] }}></div>
+                              <span className="text-slate-300 truncate">{entry.name}</span>
+                              <span className="text-slate-500 ml-auto">
+                                {Math.round((entry.value / activePortfolio.totalValue) * 100)}%
+                              </span>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* PERFORMANCE VIEW (Composed with Benchmark) */}
+      {viewMode === 'performance' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 animate-fade-in">
+               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-emerald-500" /> Performance History
+                        </h3>
+                        <p className="text-sm text-slate-400">Comparison against S&P 500 Benchmark (1 Year)</p>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-2xl font-bold text-white">${activePortfolio.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                        <div className="text-sm text-emerald-400 font-medium">+24.5% Past Year</div>
+                    </div>
+               </div>
+               <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartData}>
+                            <defs>
+                                <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                            <XAxis dataKey="date" hide />
+                            <YAxis 
+                                domain={['auto', 'auto']} 
+                                stroke="#64748b" 
+                                fontSize={12} 
+                                tickFormatter={(val) => `$${val/1000}k`} 
+                                tickLine={false} 
+                                axisLine={false} 
+                            />
+                            <RechartsTooltip 
+                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
+                                formatter={(value: number, name: string) => [
+                                    `$${value.toLocaleString()}`, 
+                                    name === 'value' ? 'My Portfolio' : 'S&P 500 Benchmark'
+                                ]}
+                                labelFormatter={(label) => label}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="circle" />
+                            <Area type="monotone" dataKey="value" name="My Portfolio" stroke="#10b981" fillOpacity={1} fill="url(#colorEquity)" strokeWidth={2} />
+                            <Line type="monotone" dataKey="benchmark" name="S&P 500 Benchmark" stroke="#64748b" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+               </div>
+          </div>
+      )}
+
+      {/* REBALANCING VIEW */}
+      {viewMode === 'rebalancing' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg animate-fade-in">
+              <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Scale className="w-6 h-6 text-brand-500" /> Portfolio Rebalancing
+                    </h3>
+                    <p className="text-sm text-slate-400 mt-1">Define your strategy and see exactly what to trade.</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
+                       <div className="text-sm font-bold text-slate-400">Total Target Allocation:</div>
+                       <div className={`text-lg font-bold ${Math.abs(totalTarget - 100) < 0.1 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                           {totalTarget.toFixed(1)}%
+                       </div>
+                       {Math.abs(totalTarget - 100) >= 0.1 && (
+                           <div className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded">
+                               <AlertCircle className="w-3 h-3" /> Must equal 100%
+                           </div>
+                       )}
+                  </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-950 text-slate-400 uppercase text-xs font-semibold">
+                          <tr>
+                              <th className="px-6 py-4">Asset</th>
+                              <th className="px-6 py-4 text-right">Price</th>
+                              <th className="px-6 py-4 text-right">Actual %</th>
+                              <th className="px-6 py-4 text-right">Target %</th>
+                              <th className="px-6 py-4 text-right">Drift</th>
+                              <th className="px-6 py-4 text-right">Action Value</th>
+                              <th className="px-6 py-4 text-center">Suggested Trade</th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                          {holdings.map((h) => {
+                              const value = h.shares * h.currentPrice;
+                              const actualPct = (value / activePortfolio.totalValue) * 100;
+                              const targetPct = localTargets[h.id] || 0;
+                              const drift = actualPct - targetPct;
+                              
+                              // Calculate needed action
+                              const targetValue = activePortfolio.totalValue * (targetPct / 100);
+                              const diffValue = targetValue - value;
+                              
+                              // Visualizing Drift
+                              const isDrifting = Math.abs(drift) > 1; // 1% tolerance
+                              
+                              return (
+                                  <tr key={h.id} className="hover:bg-slate-800/50 transition-colors">
+                                      <td className="px-6 py-4 font-bold text-white flex items-center gap-2">
+                                          <div className="w-8 h-8 rounded-md bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-700">
+                                              {h.symbol[0]}
+                                          </div>
+                                          <div>
+                                              {h.symbol}
+                                              <div className="text-xs text-slate-500 font-normal">{h.assetType}</div>
+                                          </div>
+                                      </td>
+                                      <td className="px-6 py-4 text-right text-slate-300">${h.currentPrice.toLocaleString()}</td>
+                                      <td className="px-6 py-4 text-right text-slate-200 font-medium">{actualPct.toFixed(1)}%</td>
+                                      <td className="px-6 py-4 text-right">
+                                          <div className="flex items-center justify-end gap-1">
+                                              <input 
+                                                type="number" 
+                                                className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right text-white focus:border-brand-500 outline-none font-bold"
+                                                value={targetPct}
+                                                onChange={(e) => handleTargetChange(h.id, e.target.value)}
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                              />
+                                              <span className="text-slate-500">%</span>
+                                          </div>
+                                      </td>
+                                      <td className="px-6 py-4 text-right">
+                                          <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                              Math.abs(drift) < 1 ? 'text-slate-500 bg-slate-800' : 
+                                              drift > 0 ? 'text-amber-400 bg-amber-400/10' : 'text-blue-400 bg-blue-400/10'
+                                          }`}>
+                                              {drift > 0 ? '+' : ''}{drift.toFixed(1)}%
+                                          </span>
+                                      </td>
+                                      <td className="px-6 py-4 text-right font-mono text-slate-300">
+                                          {diffValue > 0 ? '+' : ''}${diffValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                      </td>
+                                      <td className="px-6 py-4 text-center">
+                                          {Math.abs(diffValue) < 100 ? (
+                                              <span className="text-slate-500 text-xs flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3" /> On Target</span>
+                                          ) : diffValue > 0 ? (
+                                              <button className="bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center justify-center gap-1 w-full max-w-[100px] mx-auto transition-colors">
+                                                  <RefreshCcw className="w-3 h-3" /> Buy
+                                              </button>
+                                          ) : (
+                                              <button className="bg-red-500 hover:bg-red-400 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center justify-center gap-1 w-full max-w-[100px] mx-auto transition-colors">
+                                                  <RefreshCcw className="w-3 h-3" /> Sell
+                                              </button>
+                                          )}
+                                      </td>
+                                  </tr>
+                              );
+                          })}
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+      )}
+
+      {/* HOLDINGS & OVERVIEW */}
       {viewMode === 'holdings' && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-fade-in">
               
               {/* Portfolio Analysis Header */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -424,162 +739,9 @@ const PortfolioView: React.FC = () => {
           </div>
       )}
 
-      {/* REBALANCING VIEW */}
-      {viewMode === 'rebalancing' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
-              <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Scale className="w-6 h-6 text-brand-500" /> Portfolio Rebalancing
-                    </h3>
-                    <p className="text-sm text-slate-400 mt-1">Define your strategy and see exactly what to trade.</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
-                       <div className="text-sm font-bold text-slate-400">Total Target Allocation:</div>
-                       <div className={`text-lg font-bold ${totalTarget === 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                           {totalTarget.toFixed(1)}%
-                       </div>
-                       {totalTarget !== 100 && (
-                           <div className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded">
-                               <AlertCircle className="w-3 h-3" /> Must equal 100%
-                           </div>
-                       )}
-                  </div>
-              </div>
-              
-              <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-950 text-slate-400 uppercase text-xs font-semibold">
-                          <tr>
-                              <th className="px-6 py-4">Asset</th>
-                              <th className="px-6 py-4 text-right">Price</th>
-                              <th className="px-6 py-4 text-right">Actual %</th>
-                              <th className="px-6 py-4 text-right">Target %</th>
-                              <th className="px-6 py-4 text-right">Drift</th>
-                              <th className="px-6 py-4 text-right">Action Value</th>
-                              <th className="px-6 py-4 text-center">Suggested Trade</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800">
-                          {holdings.map((h) => {
-                              const value = h.shares * h.currentPrice;
-                              const actualPct = (value / activePortfolio.totalValue) * 100;
-                              const targetPct = localTargets[h.id] || 0;
-                              const drift = actualPct - targetPct;
-                              
-                              // Calculate needed action
-                              const targetValue = activePortfolio.totalValue * (targetPct / 100);
-                              const diffValue = targetValue - value;
-                              
-                              // Visualizing Drift
-                              const isDrifting = Math.abs(drift) > 1; // 1% tolerance
-                              
-                              return (
-                                  <tr key={h.id} className="hover:bg-slate-800/50 transition-colors">
-                                      <td className="px-6 py-4 font-bold text-white flex items-center gap-2">
-                                          <div className="w-8 h-8 rounded-md bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-700">
-                                              {h.symbol[0]}
-                                          </div>
-                                          <div>
-                                              {h.symbol}
-                                              <div className="text-xs text-slate-500 font-normal">{h.assetType}</div>
-                                          </div>
-                                      </td>
-                                      <td className="px-6 py-4 text-right text-slate-300">${h.currentPrice.toLocaleString()}</td>
-                                      <td className="px-6 py-4 text-right text-slate-200 font-medium">{actualPct.toFixed(1)}%</td>
-                                      <td className="px-6 py-4 text-right">
-                                          <div className="flex items-center justify-end gap-1">
-                                              <input 
-                                                type="number" 
-                                                className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right text-white focus:border-brand-500 outline-none font-bold"
-                                                value={targetPct}
-                                                onChange={(e) => handleTargetChange(h.id, e.target.value)}
-                                                step="0.1"
-                                                min="0"
-                                                max="100"
-                                              />
-                                              <span className="text-slate-500">%</span>
-                                          </div>
-                                      </td>
-                                      <td className="px-6 py-4 text-right">
-                                          <span className={`text-xs font-bold px-2 py-1 rounded ${
-                                              Math.abs(drift) < 1 ? 'text-slate-500 bg-slate-800' : 
-                                              drift > 0 ? 'text-amber-400 bg-amber-400/10' : 'text-blue-400 bg-blue-400/10'
-                                          }`}>
-                                              {drift > 0 ? '+' : ''}{drift.toFixed(1)}%
-                                          </span>
-                                      </td>
-                                      <td className="px-6 py-4 text-right font-mono text-slate-300">
-                                          {diffValue > 0 ? '+' : ''}${diffValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                      </td>
-                                      <td className="px-6 py-4 text-center">
-                                          {Math.abs(diffValue) < 10 ? (
-                                              <span className="text-slate-500 text-xs flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3" /> Perfect</span>
-                                          ) : diffValue > 0 ? (
-                                              <button className="bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center justify-center gap-1 w-full max-w-[100px] mx-auto transition-colors">
-                                                  <RefreshCcw className="w-3 h-3" /> Buy
-                                              </button>
-                                          ) : (
-                                              <button className="bg-red-500 hover:bg-red-400 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center justify-center gap-1 w-full max-w-[100px] mx-auto transition-colors">
-                                                  <RefreshCcw className="w-3 h-3" /> Sell
-                                              </button>
-                                          )}
-                                      </td>
-                                  </tr>
-                              );
-                          })}
-                      </tbody>
-                  </table>
-              </div>
-          </div>
-      )}
-
-      {/* PERFORMANCE VIEW */}
-      {viewMode === 'performance' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-               <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-emerald-500" /> Equity Curve (90 Days)
-                    </h3>
-                    <div className="text-right">
-                        <div className="text-2xl font-bold text-white">${activePortfolio.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                        <div className="text-sm text-emerald-400 font-medium">+12.5% Past 90d</div>
-                    </div>
-               </div>
-               <div className="h-[400px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={performanceData}>
-                            <defs>
-                                <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                            <XAxis hide dataKey="date" />
-                            <YAxis 
-                                domain={['auto', 'auto']} 
-                                stroke="#64748b" 
-                                fontSize={12} 
-                                tickFormatter={(val) => `$${val/1000}k`} 
-                                tickLine={false} 
-                                axisLine={false} 
-                            />
-                            <RechartsTooltip 
-                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
-                                formatter={(value: number) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
-                            />
-                            <Area type="monotone" dataKey="value" stroke="#10b981" fillOpacity={1} fill="url(#colorEquity)" strokeWidth={2} />
-                        </AreaChart>
-                    </ResponsiveContainer>
-               </div>
-          </div>
-      )}
-
       {/* TRANSACTIONS VIEW */}
       {viewMode === 'transactions' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg animate-fade-in">
               <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                       <thead className="bg-slate-950 text-slate-400 uppercase text-xs font-semibold">
@@ -626,134 +788,6 @@ const PortfolioView: React.FC = () => {
                           )}
                       </tbody>
                   </table>
-              </div>
-          </div>
-      )}
-
-      {/* ALLOCATION VIEW */}
-      {viewMode === 'allocation' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Sector Allocation */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                      <Layers className="w-5 h-5 text-brand-500" /> Sector Exposure
-                  </h3>
-                  <div className="h-[220px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                              <Pie
-                                  data={sectorData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={50}
-                                  outerRadius={80}
-                                  paddingAngle={5}
-                                  dataKey="value"
-                              >
-                                  {sectorData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#0f172a" strokeWidth={2} />
-                                  ))}
-                              </Pie>
-                              <RechartsTooltip 
-                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
-                                  formatter={(value: number) => `$${value.toLocaleString()}`}
-                              />
-                          </PieChart>
-                      </ResponsiveContainer>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-4">
-                      {sectorData.map((entry, index) => (
-                          <div key={entry.name} className="flex items-center gap-2 text-xs">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                              <span className="text-slate-300 truncate">{entry.name}</span>
-                              <span className="text-slate-500 ml-auto">
-                                {Math.round((entry.value / activePortfolio.totalValue) * 100)}%
-                              </span>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-
-              {/* Geographical Allocation */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-emerald-500" /> Geography
-                  </h3>
-                  <div className="h-[220px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                              <Pie
-                                  data={countryData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={50}
-                                  outerRadius={80}
-                                  paddingAngle={5}
-                                  dataKey="value"
-                              >
-                                  {countryData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} stroke="#0f172a" strokeWidth={2} />
-                                  ))}
-                              </Pie>
-                              <RechartsTooltip 
-                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
-                                  formatter={(value: number) => `$${value.toLocaleString()}`}
-                              />
-                          </PieChart>
-                      </ResponsiveContainer>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-4">
-                      {countryData.map((entry, index) => (
-                          <div key={entry.name} className="flex items-center gap-2 text-xs">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[(index + 3) % COLORS.length] }}></div>
-                              <span className="text-slate-300 truncate">{entry.name}</span>
-                              <span className="text-slate-500 ml-auto">
-                                {Math.round((entry.value / activePortfolio.totalValue) * 100)}%
-                              </span>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-
-              {/* Asset Class */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                      <MapIcon className="w-5 h-5 text-amber-500" /> Asset Class
-                  </h3>
-                  <div className="h-[220px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                              <Pie
-                                  data={assetData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={50}
-                                  outerRadius={80}
-                                  paddingAngle={5}
-                                  dataKey="value"
-                              >
-                                  {assetData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={COLORS[(index + 5) % COLORS.length]} stroke="#0f172a" strokeWidth={2} />
-                                  ))}
-                              </Pie>
-                              <RechartsTooltip 
-                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
-                                  formatter={(value: number) => `$${value.toLocaleString()}`}
-                              />
-                          </PieChart>
-                      </ResponsiveContainer>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-4">
-                      {assetData.map((entry, index) => (
-                          <div key={entry.name} className="flex items-center gap-2 text-xs">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[(index + 5) % COLORS.length] }}></div>
-                              <span className="text-slate-300 truncate">{entry.name}</span>
-                              <span className="text-slate-500 ml-auto">
-                                {Math.round((entry.value / activePortfolio.totalValue) * 100)}%
-                              </span>
-                          </div>
-                      ))}
-                  </div>
               </div>
           </div>
       )}

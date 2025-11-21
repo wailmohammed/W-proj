@@ -1,14 +1,57 @@
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Wallet, ArrowUpRight, Activity, Loader2, Sparkles, BarChart3, Layers, Bell, Gauge, AlertCircle, Newspaper, ExternalLink } from 'lucide-react';
+import { TrendingUp, Wallet, ArrowUpRight, Activity, Loader2, Sparkles, BarChart3, Layers, Bell, Gauge, AlertCircle, Newspaper, ExternalLink, Power, ArrowDownRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { generatePortfolioInsight } from '../services/geminiService';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useTheme } from '../context/ThemeContext';
 import { MOCK_NEWS } from '../constants';
 
+// New Ticker Component
+const StockTicker: React.FC<{ holdings: any[] }> = ({ holdings }) => {
+    return (
+        <div className="w-full bg-slate-950 border-b border-slate-800 overflow-hidden py-2 flex items-center relative z-0">
+            <div className="flex animate-scroll whitespace-nowrap">
+                {/* Duplicate list for seamless loop */}
+                {[...holdings, ...holdings, ...holdings].map((h, i) => {
+                    // Simulate a daily change based on deviation from avg price for demo
+                    const change = ((h.currentPrice - h.avgPrice) / h.avgPrice) * 100;
+                    // Or just random daily move for visual flair if avgPrice is too far off
+                    const dailyMove = (Math.random() * 2 - 1); 
+                    
+                    return (
+                        <div key={`${h.id}-${i}`} className="flex items-center gap-2 px-6 border-r border-slate-800/50">
+                            <span className="font-bold text-slate-300 text-xs">{h.symbol}</span>
+                            <span className="text-white text-xs font-mono">${h.currentPrice.toFixed(2)}</span>
+                            <span className={`text-[10px] flex items-center ${dailyMove >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {dailyMove >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                {Math.abs(dailyMove).toFixed(2)}%
+                            </span>
+                        </div>
+                    );
+                })}
+                {holdings.length === 0 && (
+                    <span className="text-slate-500 text-xs px-6">Add assets to see live ticker updates...</span>
+                )}
+            </div>
+            <style>{`
+                @keyframes scroll {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-33%); }
+                }
+                .animate-scroll {
+                    animation: scroll 30s linear infinite;
+                }
+                .animate-scroll:hover {
+                    animation-play-state: paused;
+                }
+            `}</style>
+        </div>
+    );
+};
+
 const DashboardView: React.FC = () => {
-  const { activePortfolio, notifications } = usePortfolio();
+  const { activePortfolio, isMarketOpen, toggleMarketOpen } = usePortfolio();
   const { theme } = useTheme();
   const [insight, setInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
@@ -51,23 +94,33 @@ const DashboardView: React.FC = () => {
 
   // Market Mood Data (Mock)
   const marketMood = 65; // 0-100 Greed
-  const moodData = [
-      { name: 'Fear', value: 50, color: '#ef4444' },
-      { name: 'Greed', value: 50, color: '#10b981' },
-  ];
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in pb-10">
+      
+      {/* Ticker Tape Area */}
+      <div className="-mx-4 md:-mx-8 mb-6 border-b border-slate-200 dark:border-slate-800">
+          <StockTicker holdings={activePortfolio.holdings} />
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
         <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Your holistic financial operating system.</p>
         </div>
         <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 shadow-sm">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Market Open
-            </div>
+             <button 
+                onClick={toggleMarketOpen}
+                className={`flex items-center gap-2 text-xs border px-3 py-1.5 rounded-lg shadow-sm transition-all ${
+                    isMarketOpen 
+                    ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-brand-500' 
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 opacity-70'
+                }`}
+            >
+                <span className={`flex h-2 w-2 rounded-full ${isMarketOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+                {isMarketOpen ? 'Market Open' : 'Market Closed'}
+                <Power className="w-3 h-3 ml-1" />
+            </button>
             <div className="flex items-center gap-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 shadow-sm">
                 S&P 500: <span className="text-emerald-500 font-bold">+0.42%</span>
             </div>
@@ -145,7 +198,9 @@ const DashboardView: React.FC = () => {
              <Wallet className="w-24 h-24 text-brand-500" />
           </div>
           <div className="text-slate-500 dark:text-slate-400 text-sm mb-1 font-medium">Net Worth</div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">${(activePortfolio.totalValue + activePortfolio.cashBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-all duration-500">
+              ${(activePortfolio.totalValue + activePortfolio.cashBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
           <div className="text-emerald-500 dark:text-emerald-400 text-xs font-bold flex items-center gap-1 mt-3 bg-emerald-50 dark:bg-emerald-400/10 w-fit px-2 py-1 rounded-full">
             <TrendingUp className="w-3 h-3" /> +$2,430.50 (2.4%)
           </div>
@@ -161,7 +216,9 @@ const DashboardView: React.FC = () => {
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden">
            <div className="text-slate-500 dark:text-slate-400 text-sm mb-1 font-medium">Annual Income</div>
-           <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">${annualDividendIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+           <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-all duration-500">
+               ${annualDividendIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+           </div>
            <div className="text-brand-600 dark:text-brand-400 text-xs font-bold flex items-center gap-1 mt-3 bg-brand-50 dark:bg-brand-400/10 w-fit px-2 py-1 rounded-full">
             <ArrowUpRight className="w-3 h-3" /> +12% YoY
           </div>

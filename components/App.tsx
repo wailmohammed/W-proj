@@ -10,7 +10,7 @@ import AnalyticsView from './components/AnalyticsView';
 import SettingsView from './components/SettingsView';
 import AdminView from './components/AdminView';
 import NetWorthView from './components/NetWorthView';
-import KnowledgeBaseView from './components/KnowledgeBaseView'; // Import
+import KnowledgeBaseView from './components/KnowledgeBaseView';
 import AddAssetModal from './components/AddAssetModal';
 import AIAssistant from './components/AIAssistant';
 import Footer from './components/Footer';
@@ -19,13 +19,28 @@ import Register from './components/Auth/Register';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { Loader2 } from 'lucide-react';
 
 const AuthenticatedApp: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   // Access Portfolio Context for view state and modal
-  const { activeView, isAddAssetModalOpen } = usePortfolio();
+  // We use optional chaining or check availability because PortfolioContext might not be ready if Auth is loading
+  const portfolio = usePortfolio();
+  const activeView = portfolio?.activeView || 'dashboard';
+  const isAddAssetModalOpen = portfolio?.isAddAssetModalOpen || false;
+
+  if (loading) {
+    return (
+        <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-slate-200">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-10 h-10 text-brand-600 animate-spin" />
+                <div className="text-sm font-medium">Initializing WealthOS...</div>
+            </div>
+        </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return authView === 'login' 

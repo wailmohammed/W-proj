@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Trash2, Plus, X, Wallet, Users, DollarSign, Crown, LayoutGrid, Lock, Link as LinkIcon, CheckCircle, AlertCircle } from 'lucide-react';
-import { CryptoWallet, PlanTier, BrokerProvider } from '../types';
+import { Shield, Trash2, Plus, X, Wallet, Users, DollarSign, Crown, LayoutGrid, Lock, Link as LinkIcon, TrendingUp } from 'lucide-react';
+import { BrokerProvider, PlanTier } from '../types';
 
 const AdminView: React.FC = () => {
   const { 
@@ -13,7 +13,7 @@ const AdminView: React.FC = () => {
       toggleWallet, 
       plans, 
       updatePlanPrice, 
-      allUsers,
+      allUsers, 
       deleteUser,
       updateUserRole,
       brokerProviders,
@@ -22,7 +22,7 @@ const AdminView: React.FC = () => {
       updateBrokerProvider
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'wallets' | 'users' | 'plans' | 'brokers'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payment' | 'users' | 'plans' | 'brokerage'>('overview');
   const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState(false);
   const [isAddBrokerModalOpen, setIsAddBrokerModalOpen] = useState(false);
   
@@ -80,7 +80,7 @@ const AdminView: React.FC = () => {
                 </h1>
                 <p className="text-slate-400 text-sm mt-1">
                     {isSuperAdmin 
-                        ? 'Full system access: Manage Users, Projects, Brokers, and Payment Systems.' 
+                        ? 'Full system access: Manage Users, Brokerage Hub, and Payment Systems.' 
                         : 'Manage Users and Projects. Payment settings are restricted.'}
                 </p>
             </div>
@@ -91,13 +91,13 @@ const AdminView: React.FC = () => {
                 <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'users' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white'}`}>
                     <Users className="w-4 h-4" /> Users
                 </button>
-                 <button onClick={() => setActiveTab('brokers')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'brokers' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white'}`}>
-                    <LinkIcon className="w-4 h-4" /> Brokers
+                 <button onClick={() => setActiveTab('brokerage')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'brokerage' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                    <LinkIcon className="w-4 h-4" /> Brokerage Hub
                 </button>
                 {isSuperAdmin && (
                     <>
-                        <button onClick={() => setActiveTab('wallets')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'wallets' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white'}`}>
-                            <Wallet className="w-4 h-4" /> Payments
+                        <button onClick={() => setActiveTab('payment')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'payment' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                            <Wallet className="w-4 h-4" /> Payment System
                         </button>
                         <button onClick={() => setActiveTab('plans')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'plans' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white'}`}>
                             <DollarSign className="w-4 h-4" /> Plans
@@ -113,7 +113,7 @@ const AdminView: React.FC = () => {
                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
                     <div className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-2">Total Users</div>
                     <div className="text-4xl font-bold text-white">{allUsers.length}</div>
-                    <div className="text-emerald-400 text-sm mt-2 flex items-center gap-1"><TrendingUpIcon className="w-4 h-4" /> +12% this month</div>
+                    <div className="text-emerald-400 text-sm mt-2 flex items-center gap-1"><TrendingUp className="w-4 h-4" /> +12% this month</div>
                 </div>
                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
                     <div className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-2">Active Subscriptions</div>
@@ -127,20 +127,20 @@ const AdminView: React.FC = () => {
                     )}
                 </div>
                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                    <div className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-2">Supported Brokers</div>
+                    <div className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-2">Brokerage Integrations</div>
                     <div className="text-4xl font-bold text-emerald-400">{brokerProviders.length}</div>
-                    <div className="text-slate-500 text-sm mt-2">Integrations available</div>
+                    <div className="text-slate-500 text-sm mt-2">Providers active</div>
                 </div>
             </div>
         )}
 
-        {/* BROKERS TAB */}
-        {activeTab === 'brokers' && (
+        {/* BROKERAGE HUB TAB */}
+        {activeTab === 'brokerage' && (
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
                 <div className="p-4 bg-slate-950/50 border-b border-slate-800 flex justify-between items-center">
                     <div>
-                        <h3 className="font-bold text-white">Brokerage Integrations</h3>
-                        <p className="text-xs text-slate-400">Manage the list of supported brokers that users can connect to.</p>
+                        <h3 className="font-bold text-white text-lg flex items-center gap-2"><LinkIcon className="w-5 h-5 text-brand-500" /> Brokerage Hub</h3>
+                        <p className="text-xs text-slate-400">Configure supported financial institutions.</p>
                     </div>
                     <button 
                         onClick={() => setIsAddBrokerModalOpen(true)}
@@ -151,7 +151,7 @@ const AdminView: React.FC = () => {
                 </div>
                 <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {brokerProviders.map(provider => (
-                        <div key={provider.id} className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center justify-between group hover:border-slate-700 transition-colors">
+                        <div key={provider.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between group hover:border-slate-700 transition-colors">
                              <div className="flex items-center gap-3">
                                 <img src={provider.logo} alt={provider.name} className="w-10 h-10 rounded-lg bg-white p-1 object-contain" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/40'} />
                                 <div>
@@ -179,13 +179,15 @@ const AdminView: React.FC = () => {
             </div>
         )}
 
-        {/* WALLETS TAB (SUPER ADMIN ONLY) */}
-        {activeTab === 'wallets' && isSuperAdmin && (
+        {/* PAYMENT SYSTEM TAB (SUPER ADMIN ONLY) */}
+        {activeTab === 'payment' && isSuperAdmin && (
             <div className="space-y-6">
-                <div className="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <div className="flex justify-between items-center bg-slate-900 p-6 rounded-xl border border-slate-800">
                     <div>
-                        <h2 className="text-xl font-bold text-white">Crypto Wallets</h2>
-                        <p className="text-sm text-slate-400">Manage payment addresses shown to users.</p>
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Wallet className="w-6 h-6 text-emerald-500" /> Payment System
+                        </h2>
+                        <p className="text-sm text-slate-400 mt-1">Manage crypto receiving addresses for subscription payments.</p>
                     </div>
                     <button 
                         onClick={() => setIsAddWalletModalOpen(true)}
@@ -380,14 +382,6 @@ const AdminView: React.FC = () => {
                                 />
                             </div>
                         </div>
-                         <div className="space-y-2">
-                             {plan.features.slice(0, 3).map((f, i) => (
-                                 <div key={i} className="flex items-center gap-2 text-sm text-slate-400">
-                                     <CheckCircle className="w-4 h-4 text-brand-500" /> {f}
-                                 </div>
-                             ))}
-                             <div className="text-xs text-slate-500 pt-2">+ More features...</div>
-                         </div>
                     </div>
                 ))}
              </div>
@@ -458,14 +452,5 @@ const AdminView: React.FC = () => {
     </div>
   );
 };
-
-function TrendingUpIcon(props: any) {
-    return (
-      <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-        <polyline points="17 6 23 6 23 12" />
-      </svg>
-    )
-}
 
 export default AdminView;
