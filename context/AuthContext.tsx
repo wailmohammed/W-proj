@@ -97,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-            console.error("Session check error:", error);
+            console.error("Session check error:", JSON.stringify(error));
             setLoading(false);
             return;
         }
@@ -146,11 +146,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let joinedDate = new Date().toISOString().split('T')[0];
 
       if (error) {
+          // Log error properly to avoid [object Object] in console
+          console.warn("Profile Fetch Warning:", error.message || JSON.stringify(error));
+
           // Handle missing tables or missing row
           if (error.code === '42P01') {
-              console.warn("CRITICAL: 'profiles' table missing. Run supabase_schema.sql.");
-              // Fallback to avoid lock-out
-          } else if (error.code === 'PGRST116' || error.message.includes('0 rows')) {
+              console.warn("CRITICAL: 'profiles' table missing. Please run supabase_schema.sql in SQL Editor.");
+          } else if (error.code === 'PGRST116' || error.message?.includes('0 rows') || error.details?.includes('0 rows')) {
               // Missing Row: Logic to auto-fix if triggers failed
               console.log("Profile missing for user, attempting to create default profile...");
               const { error: insertError } = await supabase.from('profiles').insert({
@@ -162,10 +164,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
               
               if (!insertError) {
-                  return fetchUserProfile(userId, email);
+                  // Retry fetch once
+                  const { data: retryData } = await supabase.from('profiles').select('*').eq('id', userId).single();
+                  if (retryData) {
+                      role = (retryData.role as UserRole) || 'USER';
+                      plan = (retryData.plan as PlanTier) || 'Free';
+                      name = retryData.full_name || 'User';
+                  }
+              } else {
+                  console.error("Failed to create fallback profile:", JSON.stringify(insertError));
               }
-          } else {
-              console.error('Error fetching profile data:', error);
           }
       } else if (data) {
           role = (data.role as UserRole) || 'USER';
@@ -199,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar: avatar
       };
       
+      // Always set the user, even if profile fetch had issues (fallback to defaults calculated above)
       setUser(appUser);
       
       // If Admin, fetch all users for dashboard
@@ -210,7 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fetchIntegrations(userId);
 
     } catch (error) {
-      console.error('Error in profile flow:', error);
+      console.error('Exception in profile flow:', error instanceof Error ? error.message : String(error));
       // Fallback to basic user state on error to prevent lock-out
       setUser({
         id: userId,

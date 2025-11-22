@@ -146,9 +146,10 @@ const AnalyticsView: React.FC = () => {
 
   // Dynamic Benchmark Data Generator
   const getBenchmarkData = (timeframe: string) => {
-      const points = timeframe === '1M' ? 30 : timeframe === '6M' ? 26 : 12;
+      const points = timeframe === '1M' ? 30 : timeframe === '6M' ? 26 : timeframe === 'YTD' ? 20 : 12;
       const labels = timeframe === '1M' ? Array.from({length: 30}, (_,i) => `Day ${i+1}`) :
                      timeframe === '6M' ? Array.from({length: 26}, (_,i) => `Wk ${i+1}`) :
+                     timeframe === 'YTD' ? Array.from({length: 20}, (_,i) => `Wk ${i+1}`) :
                      ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
       // Seed volatility based on timeframe

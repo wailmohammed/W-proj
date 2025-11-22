@@ -105,35 +105,23 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
           .eq('user_id', user.id);
 
         if (error) {
-          // Better error logging to console
-          console.warn('Error fetching portfolios:', error.message || JSON.stringify(error));
-          
-          // Check specifically for missing table error (Postgres code 42P01)
-          if (error.code === '42P01' || error.message?.includes('does not exist')) {
-              console.warn("Database tables missing. Using MOCK data fallback.");
-              setPortfolios(MOCK_PORTFOLIOS_LIST);
-              if (!activePortfolioId) setActivePortfolioId(MOCK_PORTFOLIOS_LIST[0].id);
-          } else {
-              // Other errors, default to empty to avoid crash
-              setPortfolios([]);
-          }
+          console.warn('Error fetching portfolios (falling back to mock):', error.message);
+          setPortfolios(MOCK_PORTFOLIOS_LIST);
+          if (!activePortfolioId) setActivePortfolioId(MOCK_PORTFOLIOS_LIST[0].id);
           return;
         }
 
         if (data && data.length > 0) {
           const summaries: PortfolioSummary[] = data.map(p => ({ id: p.id, name: p.name, type: p.type as any }));
           setPortfolios(summaries);
-          // Only set default if none selected
           if (!activePortfolioId) {
               setActivePortfolioId(data[0].id); 
           }
         } else {
-          // No portfolios found, but no error. This is a valid state for a new user.
           setPortfolios([]);
         }
     } catch (err) {
         console.error("Unexpected exception in fetchPortfoliosList:", err);
-        // Safe fallback
         setPortfolios(MOCK_PORTFOLIOS_LIST);
         if (!activePortfolioId) setActivePortfolioId(MOCK_PORTFOLIOS_LIST[0].id);
     }
@@ -158,14 +146,13 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
 
       try {
-          // Check if we are in fallback mode (using mock IDs)
+          // Check if we are in fallback mode
           if (activePortfolioId.startsWith('p') && activePortfolioId.length < 5) {
-             // Fallback for mock IDs if DB is down/empty
              setActivePortfolio(MOCK_PORTFOLIO);
              return;
           }
 
-          // Parallel fetching for performance
+          // Parallel fetching
           const [
               { data: portData, error: portError },
               { data: holdingsData },
@@ -182,10 +169,8 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
 
           if (portError) {
               console.warn("Error fetching active portfolio details:", portError.message);
-              // Fallback to mock if it was a table missing error and we fell back to mock list
-              if (portError.code === '42P01' || activePortfolioId === 'p1') {
-                  setActivePortfolio(MOCK_PORTFOLIO);
-              }
+              // Fallback to mock on error
+              setActivePortfolio(MOCK_PORTFOLIO);
               return;
           }
 
@@ -251,7 +236,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
           }
       } catch (e) {
           console.error("Exception fetching portfolio data:", e);
-          // Prevent white screen death
           setActivePortfolio(MOCK_PORTFOLIO);
       }
   }, [activePortfolioId, user]);
@@ -263,8 +247,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   // --- 3. Real-time Subscription ---
   useEffect(() => {
     if (!activePortfolioId || !user || !isSupabaseConfigured) return;
-    
-    // Don't subscribe if we are using mock IDs
     if (activePortfolioId.startsWith('p') && activePortfolioId.length < 5) return;
 
     const channel = supabase.channel(`portfolio-${activePortfolioId}`)
@@ -274,7 +256,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     return () => { supabase.removeChannel(channel); }
   }, [activePortfolioId, user, fetchPortfolioData]);
 
-  // --- 4. Market Simulation Engine ---
+  // --- 4. Market Simulation Engine & Alerts ---
   useEffect(() => {
     if (!isMarketOpen || !activePortfolio.holdings.length) return;
 
@@ -283,47 +265,41 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
             if (!prev || !prev.holdings) return prev;
 
             const updatedHoldings = prev.holdings.map(h => {
-                // Simulate price movement: -0.5% to +0.5% volatility
-                const volatility = h.assetType === 'Crypto' ? 0.015 : 0.005; // Higher volatility for crypto
+                const volatility = h.assetType === 'Crypto' ? 0.015 : 0.005;
                 const changePercent = (Math.random() * (volatility * 2)) - volatility;
-                const newPrice = Math.max(0.01, h.currentPrice * (1 + changePercent)); // Ensure price doesn't go negative
+                const newPrice = Math.max(0.01, h.currentPrice * (1 + changePercent));
                 
-                return {
-                    ...h,
-                    currentPrice: Number(newPrice.toFixed(2))
-                };
+                return { ...h, currentPrice: Number(newPrice.toFixed(2)) };
+            });
+
+            // Check Alerts within the simulation loop
+            updatedHoldings.forEach(h => {
+                alerts.forEach(alert => {
+                    if (alert.isActive && alert.symbol === h.symbol) {
+                        // Basic debounce logic: only trigger if we haven't recently
+                        // For simplicity, we check if a notification with same title already exists
+                        const alertTitle = `Alert: ${h.symbol}`;
+                        
+                        if (alert.condition === 'ABOVE' && h.currentPrice >= alert.targetPrice) {
+                            setNotifications(currentNotifs => {
+                                if (currentNotifs.some(n => n.title === alertTitle && !n.read)) return currentNotifs;
+                                return [{ id: Date.now().toString(), type: 'success', title: alertTitle, message: `${h.symbol} reached target $${alert.targetPrice}`, timestamp: 'Just now', read: false }, ...currentNotifs];
+                            });
+                        } else if (alert.condition === 'BELOW' && h.currentPrice <= alert.targetPrice) {
+                             setNotifications(currentNotifs => {
+                                if (currentNotifs.some(n => n.title === alertTitle && !n.read)) return currentNotifs;
+                                return [{ id: Date.now().toString(), type: 'warning', title: alertTitle, message: `${h.symbol} dropped below $${alert.targetPrice}`, timestamp: 'Just now', read: false }, ...currentNotifs];
+                            });
+                        }
+                    }
+                });
             });
 
             const newTotal = updatedHoldings.reduce((acc, h) => acc + (h.shares * h.currentPrice), 0);
 
-            return {
-                ...prev,
-                holdings: updatedHoldings,
-                totalValue: newTotal
-            };
+            return { ...prev, holdings: updatedHoldings, totalValue: newTotal };
         });
-        
-        // Check Alerts
-        activePortfolio.holdings.forEach(h => {
-            alerts.forEach(alert => {
-                if (alert.isActive && alert.symbol === h.symbol) {
-                    if (alert.condition === 'ABOVE' && h.currentPrice >= alert.targetPrice) {
-                        // Trigger notification
-                        setNotifications(prev => {
-                            if (prev.find(n => n.title === `Alert: ${h.symbol}`)) return prev;
-                            return [{ id: Date.now().toString(), type: 'success', title: `Alert: ${h.symbol}`, message: `${h.symbol} reached target $${alert.targetPrice}`, timestamp: 'Just now', read: false }, ...prev];
-                        });
-                    } else if (alert.condition === 'BELOW' && h.currentPrice <= alert.targetPrice) {
-                         setNotifications(prev => {
-                            if (prev.find(n => n.title === `Alert: ${h.symbol}`)) return prev;
-                            return [{ id: Date.now().toString(), type: 'warning', title: `Alert: ${h.symbol}`, message: `${h.symbol} dropped below $${alert.targetPrice}`, timestamp: 'Just now', read: false }, ...prev];
-                        });
-                    }
-                }
-            });
-        });
-
-    }, 3000); // Update every 3 seconds
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [isMarketOpen, activePortfolio.holdings.length, alerts]);
@@ -386,20 +362,16 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
           const newHolding: Holding = { ...marketAsset, shares, avgPrice: price, currentPrice: price };
           
           setActivePortfolio(prev => {
-              // Check if holding exists
               const existingIdx = prev.holdings.findIndex(h => h.symbol === marketAsset.symbol);
               let newHoldings = [...prev.holdings];
-              
               if (existingIdx >= 0) {
                   const h = newHoldings[existingIdx];
                   const newShares = type === 'BUY' ? h.shares + shares : h.shares - shares;
-                  // Simple weighted avg for mock
                   const newAvg = type === 'BUY' ? ((h.shares * h.avgPrice) + (shares * price)) / newShares : h.avgPrice; 
                   newHoldings[existingIdx] = { ...h, shares: newShares, avgPrice: newAvg };
               } else if (type === 'BUY') {
                   newHoldings.push(newHolding);
               }
-              
               return {
                   ...prev,
                   holdings: newHoldings,
@@ -407,15 +379,12 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
                   totalValue: prev.totalValue + (type === 'BUY' ? shares * price : -(shares * price))
               };
           });
-
           const newNotif: Notification = { id: Date.now().toString(), type: 'success', title: 'Transaction Saved', message: `Saved ${type} ${shares} ${marketAsset.symbol}`, timestamp: 'Just now', read: false };
           setNotifications(prev => [newNotif, ...prev]);
           return;
       }
       
-      // Supabase Logic
       try {
-          // 1. Insert Transaction
           const { error: txError } = await supabase.from('transactions').insert({
               portfolio_id: activePortfolioId,
               date,
@@ -427,13 +396,11 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
           });
           if (txError) throw txError;
 
-          // 2. Check if holding exists
           const { data: existingHolding } = await supabase.from('holdings').select('*').eq('portfolio_id', activePortfolioId).eq('symbol', marketAsset.symbol).single();
 
           if (existingHolding) {
               let newShares = parseFloat(existingHolding.shares);
               let currentAvg = parseFloat(existingHolding.avg_price);
-              
               if (type === 'BUY') {
                   const totalCost = (newShares * currentAvg) + (shares * price);
                   newShares += shares;
@@ -441,7 +408,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
               } else {
                   newShares -= shares;
               }
-
               if (newShares <= 0) {
                   await supabase.from('holdings').delete().eq('id', existingHolding.id);
               } else {
@@ -463,12 +429,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
                   target_allocation: 0
               });
           }
-          
           fetchPortfolioData();
-          
           const newNotif: Notification = { id: Date.now().toString(), type: 'success', title: 'Transaction Saved', message: `Saved ${type} ${shares} ${marketAsset.symbol}`, timestamp: 'Just now', read: false };
           setNotifications(prev => [newNotif, ...prev]);
-
       } catch (error: any) {
           console.error("Error adding transaction:", error);
           const newNotif: Notification = { id: Date.now().toString(), type: 'error', title: 'Error', message: error.message || 'Failed to save transaction', timestamp: 'Just now', read: false };

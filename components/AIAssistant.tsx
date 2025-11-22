@@ -52,6 +52,10 @@ const AIAssistant: React.FC = () => {
             ? activePortfolio.holdings.reduce((acc, h) => acc + (h.shares * h.currentPrice * (h.dividendYield/100)), 0) / totalVal * 100 
             : 0;
 
+        const avgSafetyScore = activePortfolio.holdings.length > 0
+            ? Math.round(activePortfolio.holdings.reduce((acc, h) => acc + h.safetyScore, 0) / activePortfolio.holdings.length)
+            : 0;
+
         const portfolioContext = `
             CURRENT PORTFOLIO SNAPSHOT (${new Date().toLocaleDateString()}):
             Portfolio Name: ${activePortfolio.name}
@@ -60,6 +64,7 @@ const AIAssistant: React.FC = () => {
             Number of Holdings: ${holdingsCount}
             Top 3 Concentrations: ${topHoldings}
             Weighted Dividend Yield: ${totalYield.toFixed(2)}%
+            Average Safety Score: ${avgSafetyScore}/100
             
             HOLDINGS DETAIL:
             ${activePortfolio.holdings.map(h => 
@@ -132,11 +137,14 @@ const AIAssistant: React.FC = () => {
                     }
                     
                     // Send tool response back to model to continue conversation
-                    await chatSession.sendToolResponse({
-                        functionResponses: [{
-                            id: call.id,
-                            name: call.name,
-                            response: { result: responseText }
+                    // NOTE: Chat object usually expects functionResponse in sendMessage
+                    await chatSession.sendMessage({
+                        message: [{
+                            functionResponse: {
+                                name: call.name,
+                                response: { result: responseText },
+                                id: call.id
+                            }
                         }]
                     });
 
