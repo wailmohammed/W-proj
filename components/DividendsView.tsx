@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo } from 'react';
-import { Info, CheckCircle2, TrendingUp, ShieldCheck, AlertOctagon, ZapOff, XCircle, Calendar as CalendarIcon, BarChart3, Clock, Sliders, RefreshCw, AlertTriangle, Wallet, BarChart2, ArrowDownUp, ArrowUp, ArrowDown, Droplets, ListFilter, LayoutGrid } from 'lucide-react';
+import { Info, CheckCircle2, TrendingUp, ShieldCheck, AlertOctagon, ZapOff, XCircle, Calendar as CalendarIcon, BarChart3, Clock, Sliders, RefreshCw, AlertTriangle, Wallet, BarChart2, ArrowDownUp, ArrowUp, ArrowDown, Droplets, ListFilter, LayoutGrid, X, Timer, MousePointerClick } from 'lucide-react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Cell, BarChart } from 'recharts';
 import DividendCalendar, { CalendarDividend } from './DividendCalendar';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -32,7 +31,6 @@ const getPayoutColor = (ratio: number, sector: string) => {
     return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-400/10 border-red-200 dark:border-red-400/20';
 };
 
-// Helper Component for Dividend Row (DRY)
 const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ payment, isCut }) => {
     const safety = getSafetyGrade(payment.safetyScore);
     const payoutStyle = getPayoutColor(payment.payoutRatio, payment.sector);
@@ -45,12 +43,20 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
         return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-400/10 border-red-200 dark:border-red-400/20';
     };
     const snowflakeStyle = getSnowflakeStyle(snowflakeScore);
+
+    // Yield on Cost Calculation
+    const yoc = payment.avgPrice > 0 
+        ? ((payment.currentPrice / payment.avgPrice) * payment.dividendYield).toFixed(2) 
+        : payment.dividendYield.toFixed(2);
+    
+    // Estimated Ex-Date (approx 2 weeks before pay day)
+    const exDateDay = Math.max(1, payment.payDay - 14);
     
     return (
       <div className={`p-4 md:px-6 md:py-4 border-b border-slate-100 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${isCut ? 'opacity-50 grayscale' : ''}`}>
           <div className="flex flex-col md:flex-row md:items-center gap-4">
               {/* Top Row on Mobile: Date + Symbol + Amount */}
-              <div className="flex items-center justify-between w-full md:w-auto">
+              <div className="flex items-center justify-between w-full md:w-auto md:min-w-[200px]">
                   <div className="flex items-center gap-4">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 shadow-sm shrink-0">
                           <span>DAY</span>
@@ -61,7 +67,10 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
                               <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base">{payment.symbol}</span>
                               {isCut && <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 rounded">CUT</span>}
                           </div>
-                          <div className="text-xs text-slate-500 truncate max-w-[120px] md:max-w-none">{payment.name}</div>
+                          <div className="text-xs text-slate-500 truncate max-w-[120px] md:max-w-none flex items-center gap-1">
+                              {payment.name}
+                              <span className="hidden md:inline text-slate-400">• Ex: {exDateDay}th</span>
+                          </div>
                       </div>
                   </div>
                   {/* Amount shown here on mobile for visibility */}
@@ -76,7 +85,16 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
               {/* Bottom Row on Mobile / Right Side on Desktop: Metrics */}
               <div className="flex items-center justify-between md:justify-end gap-2 md:gap-4 w-full md:flex-1 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800/50 md:border-0">
                   
-                  <div className="flex items-center gap-2 md:gap-4 overflow-x-auto no-scrollbar">
+                  <div className="flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar">
+                      {/* Yield on Cost Badge */}
+                      <div className="text-left md:text-center min-w-[60px]">
+                          <div className="text-[10px] text-slate-500 uppercase mb-1 hidden md:block">YoC</div>
+                          <div className="text-[10px] text-slate-500 uppercase mb-0.5 md:hidden">YoC</div>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded border whitespace-nowrap text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800">
+                              {yoc}%
+                          </span>
+                      </div>
+
                       <div className="text-left md:text-center min-w-[60px]">
                           <div className="text-[10px] text-slate-500 uppercase mb-1 hidden md:block">Payout</div>
                           <div className="text-[10px] text-slate-500 uppercase mb-0.5 md:hidden">Payout</div>
@@ -89,13 +107,12 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
                           <div className="text-[10px] text-slate-500 uppercase mb-1 hidden md:block">Safety</div>
                           <div className="text-[10px] text-slate-500 uppercase mb-0.5 md:hidden">Safety</div>
                           <span className={`text-xs font-bold px-2 py-0.5 rounded border whitespace-nowrap ${safety.color} ${safety.bg} ${safety.border}`}>
-                              {payment.safetyScore}/100
+                              {payment.safetyScore}
                           </span>
                       </div>
 
-                      <div className="text-left md:text-center min-w-[60px]">
+                      <div className="text-left md:text-center min-w-[60px] hidden sm:block">
                           <div className="text-[10px] text-slate-500 uppercase mb-1 hidden md:block">Health</div>
-                          <div className="text-[10px] text-slate-500 uppercase mb-0.5 md:hidden">Health</div>
                           <span className={`text-xs font-bold px-2 py-0.5 rounded border whitespace-nowrap ${snowflakeStyle}`}>
                               {snowflakeScore}/25
                           </span>
@@ -103,9 +120,9 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
                   </div>
 
                   {/* Desktop Amount */}
-                  <div className="hidden md:block text-right pl-4 border-l border-slate-100 dark:border-slate-800 min-w-[80px]">
-                      <div className="text-[10px] text-slate-500 uppercase mb-1">Amount</div>
-                      <div className={`font-bold font-mono ${isCut ? 'text-red-400 line-through' : 'text-slate-900 dark:text-white'}`}>
+                  <div className="hidden md:block text-right pl-4 border-l border-slate-100 dark:border-slate-800 min-w-[90px]">
+                      <div className="text-[10px] text-slate-500 uppercase mb-1">Est. Payment</div>
+                      <div className={`font-bold font-mono text-lg ${isCut ? 'text-red-400 line-through' : 'text-slate-900 dark:text-white'}`}>
                           ${payment.amount}
                       </div>
                   </div>
@@ -115,11 +132,167 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
     );
 };
 
+// New Component for Dividend Capture Strategy
+const DividendCaptureCard: React.FC<{ holding: CalendarDividend, onShowInfo: () => void }> = ({ holding, onShowInfo }) => {
+    // Simulate dates based on payDay (Ex-Date is usually 2-4 weeks before Pay Date)
+    const currentMonth = new Date().toLocaleString('default', { month: 'short' });
+    const nextMonth = new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleString('default', { month: 'short' });
+    
+    // Simulated Data logic
+    const exDateDay = Math.max(1, holding.payDay - 15); 
+    const exDateStr = `${currentMonth} ${exDateDay}, 2025`; // Mock Year
+    const purchaseDateStr = `${currentMonth} ${Math.max(1, exDateDay - 1)}, 2025`;
+    
+    // Mock Recovery
+    const recoveryDays = (holding.symbol.charCodeAt(0) % 10) + 2; // Randomish 2-12 days
+    const sellDateDay = exDateDay + recoveryDays;
+    const sellDateStr = sellDateDay > 30 
+        ? `${nextMonth} ${sellDateDay - 30}, 2025` 
+        : `${currentMonth} ${sellDateDay}, 2025`;
+
+    const captureYield = (holding.dividendYield / 4).toFixed(2); // Quarterly yield
+
+    return (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-md mb-6">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/50">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                        Dividend Capture Strategy for <span className="text-brand-600 dark:text-brand-400">{holding.symbol}</span>
+                    </h3>
+                    <button onClick={onShowInfo} className="text-slate-400 hover:text-brand-500 transition-colors">
+                        <Info className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+
+            <div className="p-4 bg-amber-50 dark:bg-amber-500/5 border-b border-amber-100 dark:border-amber-500/10 flex items-start gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                    Dividend capture strategy is based on {holding.symbol}'s historical data. Past performance is no guarantee of future results. Ensure you understand tax implications (qualified vs non-qualified dividends).
+                </p>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                 {/* Connection Line (Desktop) */}
+                 <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 text-slate-200 dark:text-slate-700">
+                    <ArrowDownUp className="w-6 h-6 rotate-90" />
+                 </div>
+
+                {/* Step 1 */}
+                <div className="relative z-10">
+                    <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Step 1: Buy Shares 1 Day Before Ex-Date</h4>
+                    <div className="bg-emerald-400 dark:bg-emerald-500 rounded-xl p-5 text-white shadow-lg shadow-emerald-500/20 flex flex-col items-center text-center">
+                        <div className="text-xs font-medium opacity-90 mb-1">PURCHASE DATE (ESTIMATE)</div>
+                        <div className="text-2xl font-bold mb-4">{purchaseDateStr}</div>
+                        
+                        <div className="w-full border-t border-white/20 pt-3 flex justify-between items-center text-sm">
+                            <span className="opacity-90">Upcoming Ex-Dividend Date</span>
+                            <span className="font-bold">{exDateStr}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="relative z-10">
+                    <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Step 2: Sell After Price Recovers</h4>
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm flex flex-col items-center text-center h-full justify-between">
+                        <div className="w-full">
+                             <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mb-1">SELL DATE (ESTIMATE)</div>
+                             <div className="text-2xl font-bold text-slate-900 dark:text-white mb-4">{sellDateStr}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 w-full pt-3 border-t border-slate-100 dark:border-slate-700">
+                            <div>
+                                <div className="text-[10px] text-slate-500 uppercase">Avg Recovery</div>
+                                <div className="font-bold text-slate-900 dark:text-white flex items-center justify-center gap-1">
+                                    <Clock className="w-3 h-3 text-brand-500" /> {recoveryDays} Days
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-slate-500 uppercase">Capture Yield</div>
+                                <div className="font-bold text-emerald-500 flex items-center justify-center gap-1">
+                                    <TrendingUp className="w-3 h-3" /> {captureYield}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Capture Strategy Info Modal
+const CaptureInfoModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">What's a dividend capture strategy?</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 text-sm text-slate-600 dark:text-slate-300 leading-relaxed space-y-6">
+                    
+                    {/* Icons Row */}
+                    <div className="flex justify-between items-center gap-4 px-2">
+                        <div className="flex flex-col items-center text-center gap-2 flex-1">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                <MousePointerClick className="w-6 h-6 text-brand-500" />
+                            </div>
+                            <span className="text-xs font-bold">Select Stock</span>
+                        </div>
+                        <div className="h-px bg-slate-300 dark:bg-slate-700 flex-1"></div>
+                        <div className="flex flex-col items-center text-center gap-2 flex-1">
+                            <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center relative">
+                                <Timer className="w-6 h-6 text-indigo-500" />
+                                <span className="absolute -top-1 -right-1 bg-orange-400 text-white text-[9px] font-bold px-1 rounded-full">24h</span>
+                            </div>
+                            <span className="text-xs font-bold">Buy before Ex-Date</span>
+                        </div>
+                        <div className="h-px bg-slate-300 dark:bg-slate-700 flex-1"></div>
+                        <div className="flex flex-col items-center text-center gap-2 flex-1">
+                            <div className="bg-brand-100 dark:bg-brand-500/20 px-3 py-2 rounded-lg text-brand-600 dark:text-brand-400 font-bold">
+                                SELL
+                            </div>
+                            <span className="text-xs font-bold">Sell on Recovery</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white mb-2">Strategy Overview</h4>
+                        <p>
+                            Dividend capture is an investing technique that involves purchasing a stock just before the stock goes ex-dividend so that the investor can collect the dividend.
+                        </p>
+                    </div>
+                    
+                    <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                         <h4 className="font-bold text-slate-900 dark:text-white mb-2">The Key: Recovery Time</h4>
+                         <p>
+                            The best way to execute the dividend capture strategy is to find stocks that recover quickly after committing to a dividend payment. 
+                            Proper timing is essential to avoid the risk of holding the stock while its price drops by the dividend amount.
+                         </p>
+                    </div>
+
+                    <button 
+                        onClick={onClose}
+                        className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-brand-600/20"
+                    >
+                        GOT IT
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 const DividendsView: React.FC = () => {
   const { activePortfolio } = usePortfolio();
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'capture'>('list');
   const [recessionMode, setRecessionMode] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'yield' | 'safety'>('date');
+  const [showCaptureInfo, setShowCaptureInfo] = useState(false);
   
   // Projection State
   const [projectedCagr, setProjectedCagr] = useState(7); // Annual Dividend Growth Rate
@@ -283,11 +456,60 @@ const DividendsView: React.FC = () => {
                     >
                     <CalendarIcon className="w-4 h-4" /> <span className="hidden sm:inline">Calendar</span>
                     </button>
+                     <button 
+                        onClick={() => setViewMode('capture')}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'capture' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+                    >
+                    <TrendingUp className="w-4 h-4" /> <span className="hidden sm:inline">Capture Strategy</span>
+                    </button>
                 </div>
             </div>
         </div>
 
+        {/* Capture Strategy View */}
+        {viewMode === 'capture' && (
+            <div className="animate-fade-in">
+                <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-xl p-8 mb-8 border border-indigo-500/30 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-10">
+                        <Timer className="w-48 h-48 text-white" />
+                    </div>
+                    <div className="relative z-10 max-w-2xl">
+                         <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                             <ZapOff className="w-6 h-6 text-amber-400" /> Dividend Capture Opportunities
+                         </h2>
+                         <p className="text-slate-300 mb-6">
+                             Identify stocks in your portfolio approaching their Ex-Dividend date. This strategy aims to capture the dividend payment while minimizing the time capital is tied up.
+                         </p>
+                         <button 
+                             onClick={() => setShowCaptureInfo(true)}
+                             className="bg-white text-slate-900 px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-100 transition-colors shadow-lg"
+                         >
+                             Learn Strategy
+                         </button>
+                    </div>
+                </div>
+
+                {sortedDividends.length > 0 ? (
+                    sortedDividends.slice(0, 5).map(holding => (
+                        <DividendCaptureCard 
+                            key={holding.id} 
+                            holding={holding} 
+                            onShowInfo={() => setShowCaptureInfo(true)}
+                        />
+                    ))
+                ) : (
+                    <div className="text-center py-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Upcoming Opportunities</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">Add more dividend paying stocks to see capture strategies.</p>
+                    </div>
+                )}
+
+                {showCaptureInfo && <CaptureInfoModal onClose={() => setShowCaptureInfo(false)} />}
+            </div>
+        )}
+
         {/* Simply Safe Dividends Feature: Income Stress Test */}
+        {viewMode !== 'capture' && (
         <div className={`border rounded-xl p-6 relative overflow-hidden transition-all duration-500 ${recessionMode ? 'bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-500/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
@@ -331,6 +553,7 @@ const DividendsView: React.FC = () => {
                 </div>
             </div>
         </div>
+        )}
 
         {/* Forecasting & History Section - Only show in list mode */}
         {viewMode === 'list' && (
