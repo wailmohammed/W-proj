@@ -114,8 +114,9 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
       Adopt a financial advisor persona. Be concise.
     `;
 
+    /* Updated model to gemini-3-flash-preview */
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         temperature: 0.7,
@@ -143,8 +144,9 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
   try {
     const prompt = `Analyze ${symbol} for an investor. Provide 3 key distinct strengths (bull case) and 3 key distinct risks (bear case). Keep them concise.`;
     
+    /* Updated model to gemini-3-flash-preview */
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -192,8 +194,9 @@ export const analyzeStock = async (symbol: string): Promise<string> => {
   if (cached) return cached;
 
   try {
+    /* Updated model to gemini-3-flash-preview */
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: `Provide a concise fundamental analysis of ${symbol} in 100 words. Focus on recent growth catalysts and primary risks.`,
     });
     

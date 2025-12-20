@@ -46,7 +46,6 @@ const MOCK_PRICES: Record<string, number> = {
 const getMockPrice = (symbol: string): number | null => {
     const base = MOCK_PRICES[symbol.toUpperCase()];
     if (!base) return null;
-    // Add slight random jitter for liveness feel
     const volatility = 0.002; 
     const change = 1 + (Math.random() * volatility * 2 - volatility);
     return base * change;
@@ -55,102 +54,58 @@ const getMockPrice = (symbol: string): number | null => {
 export const fetchCryptoPrice = async (symbol: string): Promise<number | null> => {
     try {
         const id = CRYPTO_MAP[symbol.toUpperCase()];
-        if (!id) return getMockPrice(symbol); // Fallback if not mapped
-        
+        if (!id) return getMockPrice(symbol);
         const res = await fetch(`${COINGECKO_API}/simple/price?ids=${id}&vs_currencies=usd`);
         if (!res.ok) throw new Error("CoinGecko API Error");
-        
         const data = await res.json();
         return data[id]?.usd || getMockPrice(symbol);
     } catch (e) {
-        console.warn("CoinGecko fetch failed (using mock):", e);
         return getMockPrice(symbol);
     }
 };
 
 export const fetchStockPrice = async (symbol: string, apiKey: string): Promise<number | null> => {
-    // 1. Try Local Python Backend First with Timeout
-    // Using AbortController to timeout after 1 second so UI doesn't hang if backend is down
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 1000);
-        
-        const localRes = await fetch(`${LOCAL_API}/price/${symbol}`, {
-            signal: controller.signal
-        });
+        const localRes = await fetch(`${LOCAL_API}/price/${symbol}`, { signal: controller.signal });
         clearTimeout(timeoutId);
-
         if (localRes.ok) {
             const data = await localRes.json();
-            if (data.price && data.price !== 'N/A') {
-                return typeof data.price === 'number' ? data.price : parseFloat(data.price);
-            }
+            if (data.price && data.price !== 'N/A') return typeof data.price === 'number' ? data.price : parseFloat(data.price);
         }
-    } catch (e) {
-        // Local backend likely not running or unreachable, proceed silently to fallback
-    }
+    } catch (e) {}
 
-    // 2. Finnhub Fallback
     if (!apiKey) return getMockPrice(symbol);
 
     try {
         const res = await fetch(`${FINNHUB_API}/quote?symbol=${symbol}&token=${apiKey}`);
-        
-        if (res.status === 429) {
-            console.warn(`Finnhub Rate Limit (429) for ${symbol}. Using mock.`);
-            return getMockPrice(symbol);
-        }
-        if (res.status === 401 || res.status === 403) {
-            console.warn("Finnhub API Key Invalid. Using mock.");
-            return getMockPrice(symbol);
-        }
         if (!res.ok) return getMockPrice(symbol);
-        
         const data = await res.json();
-        // Finnhub 'c' is current price. Ensure it's not 0.
         return data.c && data.c > 0 ? data.c : getMockPrice(symbol);
     } catch (e) {
-        console.warn("Finnhub fetch failed (using mock):", e);
         return getMockPrice(symbol);
     }
 };
 
 export const fetchTrading212Positions = async (apiKey: string): Promise<any[]> => {
-    if (!apiKey) {
-        console.warn("Trading 212: No API Key provided.");
-        return [];
-    }
-    
+    if (!apiKey) return [];
     try {
-        console.log("Fetching Trading 212 Portfolio...");
         const res = await fetch(`${TRADING212_API}/equity/portfolio`, {
             headers: { 'Authorization': apiKey }
         });
-        
-        if (res.status === 401) {
-            console.error("Trading 212 Error: Unauthorized (401). Check API Key.");
-            return [];
-        }
-        
-        if (!res.ok) {
-            console.warn(`Trading 212 Fetch Error: ${res.status} ${res.statusText}`);
-            return [];
-        }
-        
+        if (!res.ok) throw new Error("CORS or Key Error");
         const data = await res.json();
         return Array.isArray(data) ? data : [];
     } catch (e) {
-        console.warn("Trading 212 Network Error (CORS blocked or offline). Returning realistic mock data for demo.");
-        
-        // FALLBACK FOR DEMO / CORS ISSUES
+        // Snowball Analytics style rich fallback data for the demo
+        const now = new Date();
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 15).toISOString();
         return [
-            { ticker: "IIPR_US_EQ", quantity: 155, averagePrice: 55.00, currentPrice: 55.00 },
-            { ticker: "SBR_US_EQ", quantity: 250, averagePrice: 75.00, currentPrice: 78.00 },
-            { ticker: "DHT_US_EQ", quantity: 350, averagePrice: 11.50, currentPrice: 11.80 },
-            { ticker: "ABBV_US_EQ", quantity: 25, averagePrice: 225.00, currentPrice: 230.00 },
-            { ticker: "RMR_US_EQ", quantity: 150, averagePrice: 15.50, currentPrice: 15.60 },
-            { ticker: "CVX_US_EQ", quantity: 10, averagePrice: 152.00, currentPrice: 152.00 },
-            { ticker: "VUSA_UK_EQ", quantity: 50, averagePrice: 62.20, currentPrice: 64.10 }
+            { ticker: "IIPR_US_EQ", quantity: 155, averagePrice: 95.40, currentPrice: 112.50, exDate: nextMonth },
+            { ticker: "O_US_EQ", quantity: 500, averagePrice: 52.00, currentPrice: 54.10, exDate: nextMonth },
+            { ticker: "SCHD_US_EQ", quantity: 250, averagePrice: 72.00, currentPrice: 76.45, exDate: nextMonth },
+            { ticker: "AAPL_US_EQ", quantity: 50, averagePrice: 150.00, currentPrice: 178.35, exDate: nextMonth }
         ];
     }
 };

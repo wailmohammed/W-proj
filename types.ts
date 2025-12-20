@@ -80,16 +80,20 @@ export interface Holding {
   currentPrice: number;
   assetType: AssetType;
   sector: string;
-  country: string; // New field for Geo Analytics
+  country: string;
   dividendYield: number;
-  expenseRatio?: number; // New field for Fee Analysis (e.g., 0.03 for VOO)
+  expenseRatio?: number;
   safetyScore: number; // 0-100
   snowflake: SnowflakeScore;
-  targetAllocation?: number; // 0-100% for rebalancing
+  targetAllocation?: number;
   logoUrl?: string;
-  // Extended Data for Research
+  // Extended Data for Research & Analysis
   financials?: FinancialHealthData[];
   competitors?: Competitor[];
+  // Dividend Tracking
+  nextExDate?: string;
+  nextPayDate?: string;
+  payoutFrequency?: 'Monthly' | 'Quarterly' | 'Annually';
 }
 
 export interface Transaction {
@@ -109,8 +113,8 @@ export interface Portfolio {
   cashBalance: number;
   holdings: Holding[];
   transactions: Transaction[];
-  manualAssets?: ManualAsset[]; // New: Real Estate, Cars
-  liabilities?: Liability[]; // New: Mortgages
+  manualAssets?: ManualAsset[];
+  liabilities?: Liability[];
 }
 
 export interface PortfolioSummary {
@@ -156,8 +160,6 @@ export interface AlertConfig {
 
 export type ViewState = 'dashboard' | 'holdings' | 'dividends' | 'analytics' | 'research' | 'community' | 'settings' | 'admin' | 'networth' | 'knowledge-base';
 
-// --- Auth & System Types ---
-
 export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 export type PlanTier = 'Free' | 'Pro' | 'Ultimate';
 
@@ -173,18 +175,18 @@ export interface User {
 
 export interface CryptoWallet {
   id: string;
-  coin: string; // BTC, ETH, etc.
-  network: string; // Bitcoin, ERC20, TRC20, etc.
+  coin: string;
+  network: string;
   address: string;
-  qrCodeUrl?: string; // Optional URL for QR image
+  qrCodeUrl?: string;
   isEnabled: boolean;
 }
 
 export interface PlanLimits {
-  portfolios: number; // -1 for unlimited
-  holdings: number;   // -1 for unlimited
-  connections: number; // Broker API connections, -1 for unlimited, 0 for manual only
-  watchlists: number; // -1 for unlimited
+  portfolios: number;
+  holdings: number;
+  connections: number;
+  watchlists: number;
 }
 
 export interface SubscriptionPlan {
@@ -197,7 +199,6 @@ export interface SubscriptionPlan {
   isPopular?: boolean;
 }
 
-// Admin Managed Provider Template
 export interface BrokerProvider {
   id: string;
   name: string;
@@ -206,10 +207,9 @@ export interface BrokerProvider {
   isEnabled: boolean;
 }
 
-// User Specific Connection
 export interface BrokerIntegration {
   id: string;
-  providerId: string; // Links to BrokerProvider.id
+  providerId: string;
   name: string;
   type: 'Stock' | 'Crypto' | 'Mixed';
   status: 'Connected' | 'Syncing' | 'Error';
