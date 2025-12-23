@@ -82,6 +82,7 @@ export interface Holding {
   sector: string;
   country: string;
   dividendYield: number;
+  payoutRatio?: number; // Added for Dividend Analysis
   expenseRatio?: number;
   safetyScore: number; // 0-100
   snowflake: SnowflakeScore;
