@@ -1,4 +1,5 @@
 
+
 export enum AssetType {
   STOCK = 'Stock',
   ETF = 'ETF',
@@ -71,6 +72,13 @@ export interface NewsItem {
   relatedSymbols: string[];
 }
 
+export interface ValuationData {
+  fairValue: number;
+  currentPrice: number;
+  discount: number; // e.g. 20 (means 20% undervalued)
+  status: 'Undervalued' | 'Fair Value' | 'Overvalued';
+}
+
 export interface Holding {
   id: string;
   symbol: string;
@@ -82,19 +90,16 @@ export interface Holding {
   sector: string;
   country: string;
   dividendYield: number;
-  payoutRatio?: number; // Added for Dividend Analysis
+  payoutRatio?: number;
   expenseRatio?: number;
   safetyScore: number; // 0-100
   snowflake: SnowflakeScore;
-  targetAllocation?: number;
+  targetAllocation?: number; // 0-100 percentage
   logoUrl?: string;
-  // Extended Data for Research & Analysis
   financials?: FinancialHealthData[];
   competitors?: Competitor[];
-  // Dividend Tracking
-  nextExDate?: string;
-  nextPayDate?: string;
-  payoutFrequency?: 'Monthly' | 'Quarterly' | 'Annually';
+  valuation?: ValuationData;
+  isAristocrat?: boolean;
 }
 
 export interface Transaction {
@@ -107,6 +112,14 @@ export interface Transaction {
   totalValue: number;
 }
 
+export interface GoalProgress {
+  maxOutputTokens?: number; // Added to avoid confusion with AI config
+  monthlyExpenses: number;
+  monthlyPassiveIncome: number;
+  freedomScore: number; // 0-100%
+  milestone: 'Survivor' | 'Stability' | 'Independence' | 'Abundance';
+}
+
 export interface Portfolio {
   id: string;
   name: string;
@@ -116,6 +129,7 @@ export interface Portfolio {
   transactions: Transaction[];
   manualAssets?: ManualAsset[];
   liabilities?: Liability[];
+  goal?: GoalProgress;
 }
 
 export interface PortfolioSummary {
@@ -159,7 +173,7 @@ export interface AlertConfig {
   isActive: boolean;
 }
 
-export type ViewState = 'dashboard' | 'holdings' | 'dividends' | 'analytics' | 'research' | 'community' | 'settings' | 'admin' | 'networth' | 'knowledge-base';
+export type ViewState = 'dashboard' | 'holdings' | 'rebalance' | 'dividends' | 'analytics' | 'research' | 'community' | 'settings' | 'admin' | 'networth' | 'knowledge-base';
 
 export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 export type PlanTier = 'Free' | 'Pro' | 'Ultimate';
@@ -183,19 +197,17 @@ export interface CryptoWallet {
   isEnabled: boolean;
 }
 
-export interface PlanLimits {
-  portfolios: number;
-  holdings: number;
-  connections: number;
-  watchlists: number;
-}
-
 export interface SubscriptionPlan {
   id: PlanTier;
   name: string;
   price: number;
   features: string[];
-  limits: PlanLimits;
+  limits: {
+    portfolios: number;
+    holdings: number;
+    connections: number;
+    watchlists: number;
+  };
   description: string;
   isPopular?: boolean;
 }
@@ -216,8 +228,6 @@ export interface BrokerIntegration {
   status: 'Connected' | 'Syncing' | 'Error';
   lastSync: string;
   logo: string;
-  apiCredentials?: {
-    apiKey: string;
-    apiSecret?: string;
-  };
+  // Added apiCredentials to fix TypeScript error in AuthContext.tsx assignments
+  apiCredentials?: any;
 }

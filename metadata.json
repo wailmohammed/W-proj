@@ -2,6 +2,7 @@
   "name": "WealthOS",
   "description": "The ultimate personal finance and investment analytics dashboard. Track portfolios, analyze dividends, and get AI-powered insights.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "geolocation"
   ]
 }
