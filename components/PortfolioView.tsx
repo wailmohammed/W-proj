@@ -1,36 +1,39 @@
 
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-// Added CheckCircle2 to imports from lucide-react to fix missing name error
-import { List, Layers, History, TrendingUp, LayoutGrid, Plus, Trash2, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw, Target, Activity, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { List, Layers, History, TrendingUp, LayoutGrid, Plus, Trash2, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw, Target, Activity, ChevronRight, AlertCircle, CheckCircle2, Scale } from 'lucide-react';
 import SnowflakeChart from './SnowflakeChart';
 import { AssetType, Holding } from '../types';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CHART_DATA_PERFORMANCE } from '../constants';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import { CHART_DATA_PERFORMANCE, BENCHMARK_DATA } from '../constants';
 
 const RebalanceDashboard: React.FC = () => {
     const { activePortfolio, updateHolding } = usePortfolio();
     const holdings = activePortfolio.holdings;
     
-    // Logic: Compare Actual Weight vs Target Allocation
-    const rebalanceData = holdings.map(h => {
-        const actualValue = h.shares * h.currentPrice;
-        const actualWeight = (actualValue / activePortfolio.totalValue) * 100;
-        const targetWeight = h.targetAllocation || 0;
-        const drift = actualWeight - targetWeight;
-        const tradeAmount = ((targetWeight / 100) * activePortfolio.totalValue) - actualValue;
-        
-        return { ...h, actualWeight, drift, tradeAmount };
-    });
+    const rebalanceData = useMemo(() => {
+        return holdings.map(h => {
+            const actualValue = h.shares * h.currentPrice;
+            const actualWeight = activePortfolio.totalValue > 0 ? (actualValue / activePortfolio.totalValue) * 100 : 0;
+            const targetWeight = h.targetAllocation || 0;
+            const drift = actualWeight - targetWeight;
+            const tradeAmount = ((targetWeight / 100) * activePortfolio.totalValue) - actualValue;
+            
+            return { ...h, actualWeight, drift, tradeAmount };
+        });
+    }, [holdings, activePortfolio.totalValue]);
 
-    const averageAccuracy = 100 - (rebalanceData.reduce((acc, curr) => acc + Math.abs(curr.drift), 0) / (holdings.length || 1));
+    const averageAccuracy = useMemo(() => {
+        if (rebalanceData.length === 0) return 100;
+        const totalDrift = rebalanceData.reduce((acc, curr) => acc + Math.abs(curr.drift), 0);
+        return Math.max(0, 100 - (totalDrift / rebalanceData.length));
+    }, [rebalanceData]);
 
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm text-center">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Portfolio Accuracy</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Portfolio Alignment</div>
                     <div className="relative inline-flex items-center justify-center mb-4">
                          <svg className="w-32 h-32 transform -rotate-90">
                             <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-100 dark:text-slate-800" />
@@ -38,33 +41,38 @@ const RebalanceDashboard: React.FC = () => {
                          </svg>
                          <span className="absolute text-2xl font-black text-slate-900 dark:text-white">{averageAccuracy.toFixed(0)}%</span>
                     </div>
-                    <p className="text-xs text-slate-500">A higher score means your portfolio closely matches your strategy.</p>
+                    <p className="text-xs text-slate-500">Your score represents how well your current positions align with your strategy targets.</p>
                 </div>
 
                 <div className="md:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl"><RefreshCw className="w-5 h-5 text-emerald-500" /></div>
-                        <h3 className="font-bold text-slate-900 dark:text-white">Smart Rebalance Recommendations</h3>
+                        <div className="p-2 bg-brand-500/10 rounded-xl"><Scale className="w-5 h-5 text-brand-500" /></div>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Actionable Rebalance Steps</h3>
                     </div>
                     <div className="space-y-3">
-                        {rebalanceData.filter(d => Math.abs(d.drift) > 2).slice(0, 3).map(d => (
-                            <div key={d.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                <div className="flex items-center gap-3">
-                                    <span className="font-bold text-slate-900 dark:text-white">{d.symbol}</span>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${d.drift > 0 ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                        {d.drift > 0 ? 'Overweight' : 'Underweight'} {Math.abs(d.drift).toFixed(1)}%
-                                    </span>
+                        {rebalanceData.filter(d => Math.abs(d.drift) > 1).slice(0, 3).map(d => (
+                            <div key={d.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${d.tradeAmount > 0 ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                                        {d.tradeAmount > 0 ? 'B' : 'S'}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-sm text-slate-900 dark:text-white">{d.symbol}</div>
+                                        <div className="text-[10px] text-slate-500">Current: {d.actualWeight.toFixed(1)}% | Target: {d.targetAllocation}%</div>
+                                    </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                                    <div className={`text-sm font-black ${d.tradeAmount > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                                         {d.tradeAmount > 0 ? 'BUY' : 'SELL'} ${Math.abs(d.tradeAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     </div>
+                                    <div className="text-[10px] text-slate-400">≈ {Math.abs(d.tradeAmount / d.currentPrice).toFixed(2)} units</div>
                                 </div>
                             </div>
                         ))}
-                        {rebalanceData.every(d => Math.abs(d.drift) <= 2) && (
-                            <div className="flex items-center gap-2 text-emerald-500 font-bold text-sm py-4">
-                                <CheckCircle2 className="w-5 h-5" /> Your portfolio is perfectly balanced.
+                        {rebalanceData.every(d => Math.abs(d.drift) <= 1) && (
+                            <div className="flex flex-col items-center justify-center gap-2 text-emerald-500 font-bold text-sm py-6">
+                                <CheckCircle2 className="w-10 h-10" /> 
+                                <span>Your portfolio is perfectly optimized.</span>
                             </div>
                         )}
                     </div>
@@ -74,6 +82,9 @@ const RebalanceDashboard: React.FC = () => {
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center">
                     <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Target className="w-5 h-5 text-brand-500" /> Target Management</h3>
+                    <div className="text-[10px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">
+                        Total Target: {rebalanceData.reduce((acc, h) => acc + (h.targetAllocation || 0), 0)}%
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
@@ -125,8 +136,16 @@ const PortfolioView: React.FC = () => {
   const { activePortfolio, viewStock, openAddAssetModal, deleteHolding } = usePortfolio();
   const [viewMode, setViewMode] = useState<'holdings' | 'performance' | 'rebalance'>('holdings');
   const [holdingViewType, setHoldingViewType] = useState<'list' | 'cards'>('cards');
+  const [performanceTimeframe, setPerformanceTimeframe] = useState<'1M' | '6M' | 'YTD' | '1Y' | 'ALL'>('1Y');
   
   const holdings = activePortfolio?.holdings || [];
+
+  const timeframeMultiplier = performanceTimeframe === '1M' ? 0.3 : performanceTimeframe === '6M' ? 0.6 : 1;
+  const filteredPerformanceData = BENCHMARK_DATA.slice(-10).map(d => ({
+      ...d,
+      portfolio: d.portfolio * timeframeMultiplier,
+      sp500: d.sp500 * timeframeMultiplier
+  }));
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in space-y-6 pb-20 px-4 md:px-0">
@@ -238,55 +257,38 @@ const PortfolioView: React.FC = () => {
 
       {viewMode === 'performance' && (
           <div className="space-y-6 animate-fade-in">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                          <TrendingUp className="w-5 h-5 text-emerald-500" /> Capital Growth
-                      </h3>
-                      <div className="h-[300px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={CHART_DATA_PERFORMANCE}>
-                                  <defs>
-                                      <linearGradient id="colorPortfolio" x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                      </linearGradient>
-                                  </defs>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
-                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                                  <YAxis hide />
-                                  <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '12px'}} />
-                                  <Area type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={4} fill="url(#colorPortfolio)" />
-                              </AreaChart>
-                          </ResponsiveContainer>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                      <div>
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                              <TrendingUp className="w-5 h-5 text-emerald-500" /> Capital Growth vs S&P 500
+                          </h3>
+                          <p className="text-sm text-slate-500">Benchmark your strategy against the market leaders</p>
+                      </div>
+                      <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                          {(['1M', '6M', 'YTD', '1Y', 'ALL'] as const).map(tf => (
+                              <button key={tf} onClick={() => setPerformanceTimeframe(tf)} className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${performanceTimeframe === tf ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>{tf}</button>
+                          ))}
                       </div>
                   </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-                      <div>
-                          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Total Gain</h3>
-                          <div className="space-y-6">
-                              <div>
-                                  <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Unrealized P/L</div>
-                                  <div className="text-4xl font-black text-emerald-500">+$12,450</div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">1Y Return</div>
-                                    <div className="text-xl font-bold text-brand-600">+14.2%</div>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Volatility</div>
-                                    <div className="text-xl font-bold text-amber-500">Low</div>
-                                </div>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-500 font-bold">ALPHA VS S&P 500</span>
-                              <span className="font-bold text-emerald-500">+2.4%</span>
-                          </div>
-                      </div>
+                  <div className="h-[400px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={filteredPerformanceData}>
+                              <defs>
+                                  <linearGradient id="colorPortfolio" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                  </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
+                              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                              <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} tick={{fill: '#94a3b8', fontSize: 12}} />
+                              <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '12px'}} formatter={(v) => [`${Number(v).toFixed(2)}%`]} />
+                              <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
+                              <Area name="My Portfolio" type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={4} fill="url(#colorPortfolio)" />
+                              <Line name="S&P 500" type="monotone" dataKey="sp500" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                          </AreaChart>
+                      </ResponsiveContainer>
                   </div>
               </div>
           </div>

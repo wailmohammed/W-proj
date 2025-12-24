@@ -1,5 +1,4 @@
 
-
 export enum AssetType {
   STOCK = 'Stock',
   ETF = 'ETF',
@@ -100,6 +99,12 @@ export interface Holding {
   competitors?: Competitor[];
   valuation?: ValuationData;
   isAristocrat?: boolean;
+  // New Financial Ratios
+  marketCap?: number;
+  peRatio?: number;
+  debtToEquity?: number;
+  profitMargin?: number;
+  analystConsensus?: 'Strong Buy' | 'Buy' | 'Hold' | 'Sell' | 'Strong Sell';
 }
 
 export interface Transaction {
@@ -113,7 +118,7 @@ export interface Transaction {
 }
 
 export interface GoalProgress {
-  maxOutputTokens?: number; // Added to avoid confusion with AI config
+  maxOutputTokens?: number;
   monthlyExpenses: number;
   monthlyPassiveIncome: number;
   freedomScore: number; // 0-100%
@@ -228,6 +233,5 @@ export interface BrokerIntegration {
   status: 'Connected' | 'Syncing' | 'Error';
   lastSync: string;
   logo: string;
-  // Added apiCredentials to fix TypeScript error in AuthContext.tsx assignments
   apiCredentials?: any;
 }

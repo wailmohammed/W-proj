@@ -50,7 +50,6 @@ const handleGeminiError = (error: any, defaultMessage: string): string => {
         errorStr = String(error);
     }
 
-    // Check for Quota Exceeded / Rate Limit (429)
     if (
         errorStr.includes('429') || 
         errorStr.toLowerCase().includes('quota') || 
@@ -74,14 +73,13 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
   const hash = generatePortfolioHash(portfolio);
   const cacheKey = `insight_${hash}`;
   
-  // 1. Check persistent cache
   const cached = getFromCache<string>(cacheKey);
   if (cached) return cached;
 
   try {
-    // Prepare a summary of the portfolio for the prompt
+    // Prepare a summary of the portfolio including new P/E and Market Cap metrics
     const holdingsSummary = portfolio.holdings
-      .map(h => `${h.symbol} (${h.assetType}): $${(h.shares * h.currentPrice).toFixed(0)}`)
+      .map(h => `${h.symbol}: $${(h.shares * h.currentPrice).toFixed(0)} (P/E: ${h.peRatio || 'N/A'}, Mkt Cap: $${h.marketCap ? (h.marketCap / 1e9).toFixed(1) + 'B' : 'N/A'})`)
       .join(', ');
 
     let advancedContext = '';
@@ -91,8 +89,6 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
         - Portfolio Beta: ${metrics.beta.toFixed(2)}
         - Weighted Yield: ${metrics.yield.toFixed(2)}%
         - Sector Allocation: ${JSON.stringify(metrics.sectorWeights)}
-        - Cost Basis Info: ${metrics.costBasisSummary}
-        - Recent Activity: ${metrics.recentTransactions.join(', ') || 'None'}
         `;
     }
 
@@ -102,19 +98,18 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
       Core Data:
       - Total Cash: $${portfolio.cashBalance}
       - Total Equity Value: $${portfolio.totalValue}
-      - Holdings: ${holdingsSummary}
+      - Holdings Details: ${holdingsSummary}
 
       ${advancedContext}
 
       Provide a professional, 3-4 sentence executive summary. 
-      1. Comment on the overall risk level (referencing beta and sectors).
-      2. Mention any recent activity impact or lack thereof.
-      3. Highlight one area for potential diversification or attention based on the sectors.
+      1. Comment on the valuation of holdings based on P/E ratios and Market Cap distribution.
+      2. Mention any concentration risk.
+      3. Suggest a strategic move (e.g., rebalancing, increasing defensive positions) based on current exposure.
       
-      Adopt a financial advisor persona. Be concise.
+      Adopt a high-end financial advisor persona. Be concise and actionable.
     `;
 
-    /* Updated model to gemini-3-flash-preview */
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -124,10 +119,7 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
     });
 
     const text = response.text || "Unable to generate insight at this time.";
-    
-    // 2. Save to cache
     saveToCache(cacheKey, text);
-    
     return text;
   } catch (error) {
     return handleGeminiError(error, "AI Insight unavailable. Please check your API key configuration.");
@@ -136,15 +128,12 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
 
 export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: string[], risks: string[] }> => {
   const cacheKey = `risks_${symbol}`;
-  
-  // 1. Check persistent cache
   const cached = getFromCache<{ strengths: string[], risks: string[] }>(cacheKey);
   if (cached) return cached;
 
   try {
     const prompt = `Analyze ${symbol} for an investor. Provide 3 key distinct strengths (bull case) and 3 key distinct risks (bear case). Keep them concise.`;
     
-    /* Updated model to gemini-3-flash-preview */
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -168,17 +157,11 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
     
     const text = response.text;
     if (!text) throw new Error("No text returned");
-    
     const result = JSON.parse(text);
-    
-    // 2. Save to cache
     saveToCache(cacheKey, result);
-    
     return result;
   } catch (error) {
     handleGeminiError(error, "");
-    
-    // Fallback to generic data on error (including rate limit) to keep UI intact
     return { 
       strengths: ["Strong market position", "Consistent revenue growth", "High brand value"], 
       risks: ["Regulatory challenges", "Market saturation", "Economic downturn impact"] 
@@ -188,23 +171,17 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
 
 export const analyzeStock = async (symbol: string): Promise<string> => {
   const cacheKey = `analysis_${symbol}`;
-  
-  // 1. Check persistent cache
   const cached = getFromCache<string>(cacheKey);
   if (cached) return cached;
 
   try {
-    /* Updated model to gemini-3-flash-preview */
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Provide a concise fundamental analysis of ${symbol} in 100 words. Focus on recent growth catalysts and primary risks.`,
     });
     
     const text = response.text || "Analysis unavailable.";
-    
-    // 2. Save to cache
     saveToCache(cacheKey, text);
-    
     return text;
   } catch (error) {
       return handleGeminiError(error, "Analysis unavailable.");
