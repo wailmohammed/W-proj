@@ -6,7 +6,7 @@ import { Portfolio } from '../types';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Persistent Cache Helpers to prevent 429s across reloads
-const CACHE_PREFIX = 'wealthos_cache_v1_';
+const CACHE_PREFIX = 'wealthos_cache_v2_';
 
 const getFromCache = <T>(key: string): T | null => {
     try {
@@ -58,6 +58,10 @@ const handleGeminiError = (error: any, defaultMessage: string): string => {
         return "⚠️ AI Usage Limit Reached. Showing cached/fallback data.";
     }
 
+    if (errorStr.includes('Failed to fetch')) {
+        return "⚠️ Connection to AI servers failed. Check your internet connection.";
+    }
+
     return defaultMessage;
 };
 
@@ -65,8 +69,6 @@ interface PortfolioContextData {
     beta: number;
     yield: number;
     sectorWeights: Record<string, string>; // Percentage string
-    costBasisSummary: string;
-    recentTransactions: string[];
 }
 
 export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: PortfolioContextData): Promise<string> => {
@@ -77,10 +79,10 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
   if (cached) return cached;
 
   try {
-    // Prepare a summary of the portfolio including new P/E and Market Cap metrics
+    // Prepare a summary of the portfolio including deep financial metrics
     const holdingsSummary = portfolio.holdings
-      .map(h => `${h.symbol}: $${(h.shares * h.currentPrice).toFixed(0)} (P/E: ${h.peRatio || 'N/A'}, Mkt Cap: $${h.marketCap ? (h.marketCap / 1e9).toFixed(1) + 'B' : 'N/A'})`)
-      .join(', ');
+      .map(h => `${h.symbol}: Value $${(h.shares * h.currentPrice).toFixed(0)} (P/E: ${h.peRatio || 'N/A'}, D/E: ${h.debtToEquity || 'N/A'}, Margin: ${h.profitMargin || 'N/A'}%, Mkt Cap: $${h.marketCap ? (h.marketCap / 1e9).toFixed(1) + 'B' : 'N/A'})`)
+      .join('\n');
 
     let advancedContext = '';
     if (metrics) {
@@ -93,28 +95,29 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
     }
 
     const prompt = `
-      Analyze the following investment portfolio summary for a daily executive briefing:
+      Analyze the following investment portfolio summary for a professional executive briefing:
       
       Core Data:
       - Total Cash: $${portfolio.cashBalance}
       - Total Equity Value: $${portfolio.totalValue}
-      - Holdings Details: ${holdingsSummary}
+      - Holdings Details: 
+      ${holdingsSummary}
 
       ${advancedContext}
 
-      Provide a professional, 3-4 sentence executive summary. 
-      1. Comment on the valuation of holdings based on P/E ratios and Market Cap distribution.
-      2. Mention any concentration risk.
-      3. Suggest a strategic move (e.g., rebalancing, increasing defensive positions) based on current exposure.
+      Provide a high-end financial advisor executive summary (3-4 sentences):
+      1. Analyze the fundamental quality of the holdings based on P/E ratios and profit margins.
+      2. Critique the balance sheet health (Debt-to-Equity exposure).
+      3. Recommend a strategic optimization (e.g., rotation, defensive hedging, or momentum capture).
       
-      Adopt a high-end financial advisor persona. Be concise and actionable.
+      Maintain a sophisticated, institutional-grade tone.
     `;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
-        temperature: 0.7,
+        temperature: 0.6,
       }
     });
 
@@ -122,17 +125,17 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
     saveToCache(cacheKey, text);
     return text;
   } catch (error) {
-    return handleGeminiError(error, "AI Insight unavailable. Please check your API key configuration.");
+    return handleGeminiError(error, "AI Insight unavailable. Please check your network or API settings.");
   }
 };
 
 export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: string[], risks: string[] }> => {
-  const cacheKey = `risks_${symbol}`;
+  const cacheKey = `risks_v2_${symbol}`;
   const cached = getFromCache<{ strengths: string[], risks: string[] }>(cacheKey);
   if (cached) return cached;
 
   try {
-    const prompt = `Analyze ${symbol} for an investor. Provide 3 key distinct strengths (bull case) and 3 key distinct risks (bear case). Keep them concise.`;
+    const prompt = `Analyze ${symbol} for a sophisticated investor. List 3 strengths and 3 risks focusing on fundamental analysis, cash flow, and market positioning. Return in JSON format.`;
     
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -142,14 +145,8 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            strengths: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            },
-            risks: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
+            strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+            risks: { type: Type.ARRAY, items: { type: Type.STRING } }
           }
         }
       }
@@ -163,21 +160,21 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
   } catch (error) {
     handleGeminiError(error, "");
     return { 
-      strengths: ["Strong market position", "Consistent revenue growth", "High brand value"], 
-      risks: ["Regulatory challenges", "Market saturation", "Economic downturn impact"] 
+      strengths: ["Dominant market presence", "Strong balance sheet", "High switching costs"], 
+      risks: ["Macroeconomic headwinds", "Regulatory pressure", "Intense competition"] 
     };
   }
 };
 
 export const analyzeStock = async (symbol: string): Promise<string> => {
-  const cacheKey = `analysis_${symbol}`;
+  const cacheKey = `analysis_v2_${symbol}`;
   const cached = getFromCache<string>(cacheKey);
   if (cached) return cached;
 
   try {
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Provide a concise fundamental analysis of ${symbol} in 100 words. Focus on recent growth catalysts and primary risks.`,
+        contents: `Analyze ${symbol} financials (P/E, margins, debt) and provide a concise fundamental outlook in 100 words.`,
     });
     
     const text = response.text || "Analysis unavailable.";

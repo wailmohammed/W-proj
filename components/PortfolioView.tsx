@@ -1,11 +1,194 @@
 
 import React, { useState, useMemo } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { List, Layers, History, TrendingUp, LayoutGrid, Plus, Trash2, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw, Target, Activity, ChevronRight, AlertCircle, CheckCircle2, Scale } from 'lucide-react';
+import { List, Layers, History, TrendingUp, LayoutGrid, Plus, Trash2, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw, Target, Activity, ChevronRight, AlertCircle, CheckCircle2, Scale, Clock, PieChart as PieChartIcon, Wallet, Briefcase, Globe, Zap, Info } from 'lucide-react';
 import SnowflakeChart from './SnowflakeChart';
 import { AssetType, Holding } from '../types';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { CHART_DATA_PERFORMANCE, BENCHMARK_DATA } from '../constants';
+
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+const ProDashboard: React.FC = () => {
+    const { activePortfolio } = usePortfolio();
+    const holdings = activePortfolio.holdings;
+    
+    const assetAllocation = useMemo(() => {
+        const data: Record<string, number> = {};
+        holdings.forEach(h => {
+            data[h.assetType] = (data[h.assetType] || 0) + (h.shares * h.currentPrice);
+        });
+        return Object.entries(data).map(([name, value]) => ({ name, value }));
+    }, [holdings]);
+
+    const sectorAllocation = useMemo(() => {
+        const data: Record<string, number> = {};
+        holdings.forEach(h => {
+            data[h.sector] = (data[h.sector] || 0) + (h.shares * h.currentPrice);
+        });
+        return Object.entries(data).sort((a,b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value }));
+    }, [holdings]);
+
+    const totalEquity = activePortfolio.totalValue;
+
+    return (
+        <div className="space-y-6 animate-fade-in pb-10">
+            {/* KPI Header Row (Matches Pic) */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-8">
+                 <div className="flex-1 text-center">
+                    <div className="text-4xl font-black text-slate-900 dark:text-white mb-1">10</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Global Regions</div>
+                 </div>
+                 <div className="w-px h-12 bg-slate-100 dark:border-slate-800 hidden md:block"></div>
+                 <div className="flex-1 text-center">
+                    <div className="text-4xl font-black text-emerald-500 mb-1">3.</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Connected Brokers</div>
+                 </div>
+                 <div className="w-px h-12 bg-slate-100 dark:border-slate-800 hidden md:block"></div>
+                 <div className="flex-1 text-center">
+                    <div className="text-4xl font-black text-brand-500 mb-1">10</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Currencies</div>
+                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Col: Targets & Health */}
+                <div className="lg:col-span-3 space-y-6">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Strategy Targets</h3>
+                        <div className="h-[180px] relative">
+                             <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={assetAllocation} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={8} dataKey="value">
+                                        {assetAllocation.map((entry, index) => <Cell key={`c-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                    </Pie>
+                                </PieChart>
+                             </ResponsiveContainer>
+                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="text-xl font-black text-slate-900 dark:text-white">100%</span>
+                             </div>
+                        </div>
+                        <div className="mt-6 space-y-3">
+                            {assetAllocation.map((a, i) => (
+                                <div key={a.name} className="flex items-center justify-between text-[11px] font-bold">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS[i % COLORS.length]}}></div>
+                                        <span className="text-slate-500">{a.name}</span>
+                                    </div>
+                                    <span className="text-slate-900 dark:text-white">{((a.value / (totalEquity || 1)) * 100).toFixed(1)}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="bg-brand-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                        <Zap className="absolute top-0 right-0 w-24 h-24 text-white/10 -mr-4 -mt-4" />
+                        <div className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Portfolio Health</div>
+                        <div className="text-2xl font-black mb-4 uppercase tracking-tighter">Excellent</div>
+                        <div className="space-y-3">
+                            <div className="flex justify-between text-[10px] font-bold opacity-80"><span>Efficiency</span><span>95%</span></div>
+                            <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-white w-[95%]"></div></div>
+                            <div className="flex justify-between text-[10px] font-bold opacity-80"><span>Risk Control</span><span>82%</span></div>
+                            <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-white w-[82%]"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Middle Col: Wide Analytics */}
+                <div className="lg:col-span-6 space-y-6">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                        <div className="flex justify-between items-center mb-8">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Growth Momentum</h3>
+                            <div className="flex gap-2 bg-slate-50 dark:bg-slate-800 p-1 rounded-xl">
+                                {['1M', '6M', '1Y'].map(t => (
+                                    <button key={t} className={`px-4 py-1 text-[10px] font-black rounded-lg ${t === '1Y' ? 'bg-white dark:bg-slate-700 text-brand-600 shadow-sm' : 'text-slate-400'}`}>{t}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={CHART_DATA_PERFORMANCE}>
+                                    <defs>
+                                        <linearGradient id="mainGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15}/>
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} tickFormatter={(v) => `$${v/1000}k`} />
+                                    <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '16px'}} />
+                                    <Area type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={4} fill="url(#mainGrad)" />
+                                    <Line type="monotone" dataKey="sp500" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Daily Returns</div>
+                            <div className="h-[120px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={BENCHMARK_DATA.slice(-8)}>
+                                        <Bar dataKey="portfolio" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Market Variance</div>
+                            <div className="h-[120px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={BENCHMARK_DATA.slice(-8)}>
+                                        <Area type="step" dataKey="nasdaq" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Col: Sector & Concentration */}
+                <div className="lg:col-span-3 space-y-6">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Market Sectoring</h3>
+                        <div className="h-[180px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={sectorAllocation} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={8} dataKey="value">
+                                        {sectorAllocation.map((entry, index) => <Cell key={`s-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />)}
+                                    </Pie>
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="mt-4 space-y-2">
+                             {sectorAllocation.map((s, i) => (
+                                <div key={s.name} className="flex items-center justify-between text-[10px] font-bold">
+                                    <span className="text-slate-500 uppercase tracking-tighter">{s.name}</span>
+                                    <span className="text-slate-900 dark:text-white font-black">{((s.value / (totalEquity || 1)) * 100).toFixed(1)}%</span>
+                                </div>
+                             ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Risk Exposure</h3>
+                        <div className="space-y-4">
+                            {[72, 45, 18, 32].map((v, i) => (
+                                <div key={i} className="space-y-1.5">
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-emerald-500" style={{ width: `${v}%` }}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const RebalanceDashboard: React.FC = () => {
     const { activePortfolio, updateHolding } = usePortfolio();
@@ -41,7 +224,7 @@ const RebalanceDashboard: React.FC = () => {
                          </svg>
                          <span className="absolute text-2xl font-black text-slate-900 dark:text-white">{averageAccuracy.toFixed(0)}%</span>
                     </div>
-                    <p className="text-xs text-slate-500">Your score represents how well your current positions align with your strategy targets.</p>
+                    <p className="text-xs text-slate-500">How well your current positions align with your strategy targets.</p>
                 </div>
 
                 <div className="md:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col justify-center">
@@ -65,14 +248,13 @@ const RebalanceDashboard: React.FC = () => {
                                     <div className={`text-sm font-black ${d.tradeAmount > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                                         {d.tradeAmount > 0 ? 'BUY' : 'SELL'} ${Math.abs(d.tradeAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     </div>
-                                    <div className="text-[10px] text-slate-400">≈ {Math.abs(d.tradeAmount / d.currentPrice).toFixed(2)} units</div>
                                 </div>
                             </div>
                         ))}
                         {rebalanceData.every(d => Math.abs(d.drift) <= 1) && (
                             <div className="flex flex-col items-center justify-center gap-2 text-emerald-500 font-bold text-sm py-6">
                                 <CheckCircle2 className="w-10 h-10" /> 
-                                <span>Your portfolio is perfectly optimized.</span>
+                                <span>Portfolio is perfectly optimized.</span>
                             </div>
                         )}
                     </div>
@@ -134,18 +316,18 @@ const RebalanceDashboard: React.FC = () => {
 
 const PortfolioView: React.FC = () => {
   const { activePortfolio, viewStock, openAddAssetModal, deleteHolding } = usePortfolio();
-  const [viewMode, setViewMode] = useState<'holdings' | 'performance' | 'rebalance'>('holdings');
+  const [viewMode, setViewMode] = useState<'pro' | 'holdings' | 'performance' | 'rebalance'>('pro');
   const [holdingViewType, setHoldingViewType] = useState<'list' | 'cards'>('cards');
   const [performanceTimeframe, setPerformanceTimeframe] = useState<'1M' | '6M' | 'YTD' | '1Y' | 'ALL'>('1Y');
   
   const holdings = activePortfolio?.holdings || [];
 
-  const timeframeMultiplier = performanceTimeframe === '1M' ? 0.3 : performanceTimeframe === '6M' ? 0.6 : 1;
-  const filteredPerformanceData = BENCHMARK_DATA.slice(-10).map(d => ({
-      ...d,
-      portfolio: d.portfolio * timeframeMultiplier,
-      sp500: d.sp500 * timeframeMultiplier
-  }));
+  const filteredPerformanceData = useMemo(() => {
+    const data = [...BENCHMARK_DATA];
+    const timeframeMap = { '1M': 4, '6M': 6, 'YTD': 8, '1Y': 12, 'ALL': 24 };
+    const sliceCount = timeframeMap[performanceTimeframe];
+    return data.slice(-sliceCount);
+  }, [performanceTimeframe]);
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in space-y-6 pb-20 px-4 md:px-0">
@@ -155,20 +337,24 @@ const PortfolioView: React.FC = () => {
             <button onClick={() => openAddAssetModal()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-600 text-white hover:bg-brand-500 transition-all shadow-lg shadow-brand-600/20">
                 <Plus className="w-4 h-4" /> Add Asset
             </button>
-            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-                <button onClick={() => setViewMode('holdings')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'holdings' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+                <button onClick={() => setViewMode('pro')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'pro' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                    Pro Dashboard
+                </button>
+                <button onClick={() => setViewMode('holdings')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'holdings' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
                     Holdings
                 </button>
-                <button onClick={() => setViewMode('rebalance')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'rebalance' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                <button onClick={() => setViewMode('rebalance')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'rebalance' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
                     Rebalance
                 </button>
-                <button onClick={() => setViewMode('performance')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'performance' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
-                    Returns
+                <button onClick={() => setViewMode('performance')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'performance' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                    Performance
                 </button>
             </div>
         </div>
       </div>
 
+      {viewMode === 'pro' && <ProDashboard />}
       {viewMode === 'rebalance' && <RebalanceDashboard />}
 
       {viewMode === 'holdings' && (
@@ -210,7 +396,7 @@ const PortfolioView: React.FC = () => {
                                       <div className="h-24"><SnowflakeChart data={h.snowflake} height={100} /></div>
                                   </div>
                                   <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2">
-                                      <div className="text-left"><div className="text-[9px] text-slate-500 uppercase">Avg Price</div><div className="text-xs font-bold text-slate-700 dark:text-slate-300">${h.avgPrice.toFixed(2)}</div></div>
+                                      <div className="text-left"><div className="text-[9px] text-slate-500 uppercase">PE Ratio</div><div className="text-xs font-bold text-slate-700 dark:text-slate-300">{h.peRatio || 'N/A'}</div></div>
                                       <div className="text-right"><div className="text-[9px] text-slate-500 uppercase">Yield</div><div className="text-xs font-bold text-emerald-500">{h.dividendYield}%</div></div>
                                   </div>
                               </div>
@@ -226,7 +412,7 @@ const PortfolioView: React.FC = () => {
                                     <th className="px-6 py-4">Instrument</th>
                                     <th className="px-6 py-4 text-right">Qty</th>
                                     <th className="px-6 py-4 text-right">Avg Cost</th>
-                                    <th className="px-6 py-4 text-right">Market Price</th>
+                                    <th className="px-6 py-4 text-right">PE Ratio</th>
                                     <th className="px-6 py-4 text-right">Total Value</th>
                                     <th className="px-6 py-4 text-right">Growth %</th>
                                 </tr>
@@ -240,7 +426,7 @@ const PortfolioView: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right font-mono text-slate-600 dark:text-slate-300">{h.shares.toFixed(2)}</td>
                                         <td className="px-6 py-4 text-right font-mono text-slate-600 dark:text-slate-300">${h.avgPrice.toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-right font-mono text-brand-600 dark:text-brand-400 font-bold">${h.currentPrice.toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-right font-mono text-brand-600 dark:text-brand-400 font-bold">{h.peRatio || 'N/A'}</td>
                                         <td className="px-6 py-4 text-right font-bold text-slate-900 dark:text-white">${(h.shares * h.currentPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                         <td className={`px-6 py-4 text-right font-bold ${(h.shares * h.currentPrice) >= (h.shares * h.avgPrice) ? 'text-emerald-500' : 'text-red-500'}`}>
                                             {((h.shares * h.currentPrice - h.shares * h.avgPrice) / (h.shares * h.avgPrice || 1) * 100).toFixed(2)}%
@@ -263,7 +449,7 @@ const PortfolioView: React.FC = () => {
                           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                               <TrendingUp className="w-5 h-5 text-emerald-500" /> Capital Growth vs S&P 500
                           </h3>
-                          <p className="text-sm text-slate-500">Benchmark your strategy against the market leaders</p>
+                          <p className="text-sm text-slate-500">How your portfolio stacks up against the benchmark</p>
                       </div>
                       <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                           {(['1M', '6M', 'YTD', '1Y', 'ALL'] as const).map(tf => (
@@ -285,7 +471,7 @@ const PortfolioView: React.FC = () => {
                               <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} tick={{fill: '#94a3b8', fontSize: 12}} />
                               <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '12px'}} formatter={(v) => [`${Number(v).toFixed(2)}%`]} />
                               <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
-                              <Area name="My Portfolio" type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={4} fill="url(#colorPortfolio)" />
+                              <Area name="Portfolio" type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={4} fill="url(#colorPortfolio)" />
                               <Line name="S&P 500" type="monotone" dataKey="sp500" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                           </AreaChart>
                       </ResponsiveContainer>
