@@ -1,15 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
-import { Info, CheckCircle2, TrendingUp, ShieldCheck, AlertOctagon, ZapOff, XCircle, Calendar as CalendarIcon, BarChart3, Clock, Sliders, RefreshCw, AlertTriangle, Wallet, BarChart2, ArrowDownUp, ArrowUp, ArrowDown, Droplets, ListFilter, LayoutGrid, X, Timer, MousePointerClick, TrendingDown, DollarSign, Percent } from 'lucide-react';
+import { Info, CheckCircle2, TrendingUp, ShieldCheck, AlertOctagon, ZapOff, XCircle, Calendar as CalendarIcon, BarChart3, Clock, Sliders, RefreshCw, AlertTriangle, Wallet, BarChart2, ArrowDownUp, ArrowUp, ArrowDown, Droplets, ListFilter, LayoutGrid, X, Timer, MousePointerClick, TrendingDown, DollarSign } from 'lucide-react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Cell, BarChart } from 'recharts';
 import DividendCalendar, { CalendarDividend } from './DividendCalendar';
 import { usePortfolio } from '../context/PortfolioContext';
-
-const getPayoutColor = (ratio: number) => {
-    if (ratio < 60) return 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-400/10 border-emerald-200 dark:border-emerald-400/20';
-    if (ratio <= 90) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border-yellow-200 dark:border-yellow-400/20';
-    return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-400/10 border-red-200 dark:border-red-400/20';
-};
 
 const getSafetyGrade = (score: number) => {
     if (score >= 90) return { grade: 'A', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-400/10', border: 'border-emerald-200 dark:border-emerald-400/20', label: 'Very Safe' };
@@ -21,7 +15,6 @@ const getSafetyGrade = (score: number) => {
 
 const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ payment, isCut }) => {
     const safety = getSafetyGrade(payment.safetyScore);
-    const payoutStyle = getPayoutColor(payment.payoutRatio);
 
     return (
       <div className={`p-4 md:px-6 md:py-4 border-b border-slate-100 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${isCut ? 'opacity-50 grayscale' : ''}`}>
@@ -29,19 +22,19 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
               <div className="flex items-center justify-between w-full md:w-auto md:min-w-[220px]">
                   <div className="flex items-center gap-4">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 shadow-sm shrink-0">
-                          <span className="text-[8px] uppercase">Pay Day</span>
+                          <span className="text-[8px] uppercase tracking-tighter">Pay Day</span>
                           <span className="text-slate-900 dark:text-white text-xs md:text-sm">{payment.payDay}</span>
                       </div>
                       <div>
                           <div className="flex items-center gap-2">
                               <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base">{payment.symbol}</span>
-                              {isCut && <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 rounded uppercase shadow-sm">Suspended</span>}
+                              {isCut && <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 rounded uppercase tracking-tighter">Cut</span>}
                           </div>
-                          <div className="text-xs text-slate-500 truncate max-w-[140px] md:max-w-none">Yield: {payment.dividendYield}% • Safety: {payment.safetyScore}/100</div>
+                          <div className="text-xs text-slate-500 truncate max-w-[140px] md:max-w-none">Yield: {payment.dividendYield}%</div>
                       </div>
                   </div>
                   <div className="text-right md:hidden">
-                      <div className="text-[10px] text-slate-500 uppercase mb-0.5">Est. Pay</div>
+                      <div className="text-[10px] text-slate-500 uppercase mb-0.5 tracking-tighter">Est. Pay</div>
                       <div className={`font-bold font-mono ${isCut ? 'text-red-400 line-through' : 'text-slate-900 dark:text-white'}`}>
                           ${payment.amount}
                       </div>
@@ -51,21 +44,21 @@ const DividendRow: React.FC<{ payment: CalendarDividend, isCut: boolean }> = ({ 
               <div className="flex items-center justify-between md:justify-end gap-2 md:gap-6 w-full md:flex-1 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800/50 md:border-0">
                   <div className="flex items-center gap-4 overflow-x-auto no-scrollbar">
                       <div className="text-center min-w-[70px]">
-                          <div className="text-[9px] text-slate-500 uppercase mb-1">Payout</div>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${payoutStyle}`}>
-                              {payment.payoutRatio}%
+                          <div className="text-[9px] text-slate-500 uppercase mb-1 tracking-tighter">Safety</div>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${safety.color} ${safety.bg} ${safety.border}`}>
+                              {payment.safetyScore}
                           </span>
                       </div>
                       <div className="text-center min-w-[70px]">
-                          <div className="text-[9px] text-slate-500 uppercase mb-1">Safety</div>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${safety.color} ${safety.bg} ${safety.border}`}>
-                              {safety.grade}
+                          <div className="text-[9px] text-slate-500 uppercase mb-1 tracking-tighter">Payout</div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                              {payment.payoutRatio}%
                           </span>
                       </div>
                   </div>
 
                   <div className="hidden md:block text-right pl-6 border-l border-slate-100 dark:border-slate-800 min-w-[100px]">
-                      <div className="text-[10px] text-slate-500 uppercase mb-1">Est. Payment</div>
+                      <div className="text-[10px] text-slate-500 uppercase mb-1 font-bold tracking-tighter">Est. Payment</div>
                       <div className={`font-bold font-mono text-lg ${isCut ? 'text-red-400 line-through' : 'text-slate-900 dark:text-white'}`}>
                           ${payment.amount}
                       </div>
@@ -116,6 +109,14 @@ const DividendsView: React.FC = () => {
       return acc + (isRisky ? 0 : parseFloat(curr.amount) * 4);
   }, 0);
 
+  const historyData = useMemo(() => {
+    const months = ["Oct 23", "Nov 23", "Dec 23", "Jan 24", "Feb 24", "Mar 24", "Apr 24", "May 24", "Jun 24", "Jul 24", "Aug 24", "Sep 24"];
+    return months.map((m, i) => ({
+      name: m,
+      income: (currentAnnualIncome / 12) * (0.8 + Math.random() * 0.4)
+    }));
+  }, [currentAnnualIncome]);
+
   const monthsList = useMemo(() => {
       const currentMonthIndex = new Date().getMonth();
       return Array.from({ length: 12 }, (_, i) => {
@@ -128,15 +129,6 @@ const DividendsView: React.FC = () => {
           return { name: monthName, year, payments, totalIncome };
       });
   }, [rawDividends]);
-
-  // Historical Bar Chart Data
-  const historyData = useMemo(() => {
-    const months = ["Oct 23", "Nov 23", "Dec 23", "Jan 24", "Feb 24", "Mar 24", "Apr 24", "May 24", "Jun 24", "Jul 24", "Aug 24", "Sep 24"];
-    return months.map((m, i) => ({
-      name: m,
-      income: (currentAnnualIncome / 12) * (0.8 + Math.random() * 0.4)
-    }));
-  }, [currentAnnualIncome]);
 
   const sortedDividends = useMemo(() => {
       const data = [...rawDividends];
@@ -161,7 +153,7 @@ const DividendsView: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dividends</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Dividends</h1>
             <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
                 <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>
                     Analysis
@@ -172,10 +164,26 @@ const DividendsView: React.FC = () => {
             </div>
         </div>
 
-        {/* Historical Performance Chart */}
+        {/* Income Frequency Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+                { label: 'Daily', val: currentAnnualIncome / 365 },
+                { label: 'Weekly', val: currentAnnualIncome / 52 },
+                { label: 'Monthly', val: currentAnnualIncome / 12 },
+                { label: 'Quarterly', val: currentAnnualIncome / 4 },
+                { label: 'Yearly', val: currentAnnualIncome }
+            ].map((freq, i) => (
+                <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm text-center">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{freq.label}</div>
+                    <div className="text-xl font-black text-slate-900 dark:text-white">${Math.round(freq.val).toLocaleString()}</div>
+                </div>
+            ))}
+        </div>
+
+        {/* Monthly History Chart */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                <BarChart2 className="w-5 h-5 text-emerald-500" /> 12-Month Income History
+                <BarChart2 className="w-5 h-5 text-emerald-500" /> Monthly Income History (12M)
             </h3>
             <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -191,37 +199,36 @@ const DividendsView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className={`lg:col-span-2 border rounded-2xl p-6 transition-all ${recessionMode ? 'bg-red-50 dark:bg-red-950/10 border-red-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}>
+            <div className={`lg:col-span-2 border rounded-2xl p-6 transition-all ${recessionMode ? 'bg-red-50 dark:bg-red-950/10 border-red-200 shadow-lg' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm'}`}>
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h3 className={`text-lg font-bold flex items-center gap-2 ${recessionMode ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
                             {recessionMode ? <AlertTriangle className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5 text-emerald-500" />}
                             Income Stress Test
                         </h3>
-                        <p className="text-xs text-slate-500 mt-1">Sustainability audit for market downturns.</p>
+                        <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-widest">Sustainability audit for market downturns.</p>
                     </div>
-                    <button onClick={() => setRecessionMode(!recessionMode)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${recessionMode ? 'bg-red-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}>
+                    <button onClick={() => setRecessionMode(!recessionMode)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-tighter ${recessionMode ? 'bg-red-600 text-white shadow-red-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}>
                         {recessionMode ? 'Restore Normal' : 'Simulate Recession'}
                     </button>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
-                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Annual Income</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1 tracking-widest">Annual Income</div>
                         <div className={`text-2xl font-black ${recessionMode ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>
                             ${(recessionMode ? stressedIncome : currentAnnualIncome).toLocaleString()}
                         </div>
                     </div>
                     <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
-                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Portfolio Yield</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1 tracking-widest">Portfolio Yield</div>
                         <div className="text-2xl font-black text-emerald-500">{portfolioYield.toFixed(2)}%</div>
                     </div>
                 </div>
             </div>
 
-            {/* Forecaster with DRIP Toggle */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                    <RefreshCw className="w-5 h-5 text-brand-500" /> DRIP Forecast
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2 tracking-tight">
+                    <RefreshCw className="w-5 h-5 text-brand-500" /> Compounding Projections
                 </h3>
                 <div className="h-32 mb-4">
                     <ResponsiveContainer width="100%" height="100%">
@@ -233,12 +240,10 @@ const DividendsView: React.FC = () => {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-2">
-                            <RefreshCw className={`w-3.5 h-3.5 ${reinvestMode ? 'text-emerald-500' : 'text-slate-400'}`} />
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Dividend Reinvestment</span>
+                            <Sliders className="w-3.5 h-3.5 text-brand-500" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">CAGR: {projectedCagr}%</span>
                         </div>
-                        <button onClick={() => setReinvestMode(!reinvestMode)} className={`w-10 h-5 rounded-full relative transition-colors ${reinvestMode ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
-                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${reinvestMode ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
+                        <input type="range" min="0" max="15" value={projectedCagr} onChange={(e) => setProjectedCagr(Number(e.target.value))} className="w-20 accent-brand-500" />
                     </div>
                 </div>
             </div>
@@ -246,24 +251,38 @@ const DividendsView: React.FC = () => {
 
         {viewMode === 'list' && (
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <ListFilter className="w-5 h-5 text-brand-500" /> Schedule
-                    </h3>
-                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-bold focus:border-brand-500 outline-none">
-                        <option value="date">📅 Sort by Date</option>
-                        <option value="yield">📈 Sort by Yield (High)</option>
-                        <option value="safety">🛡️ Sort by Safety Score</option>
-                        <option value="amount">💰 Sort by Amount</option>
-                    </select>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-6">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+                            <ListFilter className="w-5 h-5 text-brand-500" /> Breakdown
+                        </h3>
+                        <div className="flex items-center gap-3 border-l border-slate-100 dark:border-slate-800 pl-6">
+                            <div className="flex items-center gap-2">
+                                <RefreshCw className={`w-4 h-4 ${reinvestMode ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                <span className="text-xs font-black text-slate-500 uppercase tracking-tighter">DRIP (Reinvest)</span>
+                            </div>
+                            <button onClick={() => setReinvestMode(!reinvestMode)} className={`w-10 h-5 rounded-full relative transition-colors ${reinvestMode ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${reinvestMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sort by</span>
+                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-black focus:border-brand-500 outline-none cursor-pointer">
+                            <option value="date">📅 Date</option>
+                            <option value="yield">📈 Yield (High)</option>
+                            <option value="safety">🛡️ Safety Score</option>
+                            <option value="amount">💰 Amount</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div className="space-y-6">
                     {sortBy === 'date' ? monthsList.map((month, idx) => month.payments.length > 0 && (
                         <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
                             <div className="bg-slate-50 dark:bg-slate-950/50 px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
-                                <h4 className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">{month.name} {month.year}</h4>
-                                <div className="text-emerald-500 font-bold font-mono text-sm">${month.totalIncome.toFixed(2)}</div>
+                                <h4 className="font-bold text-slate-900 dark:text-white uppercase tracking-widest text-xs">{month.name} {month.year}</h4>
+                                <div className="text-emerald-500 font-bold font-mono text-sm tracking-tight">${month.totalIncome.toFixed(2)}</div>
                             </div>
                             <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                 {month.payments.map(p => <DividendRow key={p.id} payment={p} isCut={recessionMode && p.safetyScore < 60} />)}
@@ -279,8 +298,10 @@ const DividendsView: React.FC = () => {
         )}
 
         {viewMode === 'calendar' && (
-             <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-                <DividendCalendar dividends={rawDividends} />
+             <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-x-auto">
+                <div className="min-w-[600px]">
+                    <DividendCalendar dividends={rawDividends} />
+                </div>
              </div>
         )}
     </div>

@@ -14,7 +14,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const [isPortfolioMenuOpen, setIsPortfolioMenuOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   
   const { 
@@ -37,6 +37,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { id: 'research', label: 'Research', icon: Search },
     { id: 'community', label: 'Community', icon: Users },
   ];
+
+  // Only show Admin for authorized users
+  if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+    navItems.push({ id: 'admin', label: 'Admin Panel', icon: Shield });
+  }
 
   const handleNavigation = (view: ViewState) => {
     switchView(view);

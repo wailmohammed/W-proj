@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { List, Layers, History, TrendingUp, LayoutGrid, Plus, Trash2, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw, Target, Activity, ChevronRight, AlertCircle, CheckCircle2, Scale, Clock, PieChart as PieChartIcon, Wallet, Briefcase, Globe, Zap, Info } from 'lucide-react';
+import { List, Layers, History, TrendingUp, LayoutGrid, Plus, Trash2, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw, Target, Activity, ChevronRight, AlertCircle, CheckCircle2, Scale, Clock, PieChart as PieChartIcon, Wallet, Briefcase, Globe, Zap, Info, MoreHorizontal } from 'lucide-react';
 import SnowflakeChart from './SnowflakeChart';
 import { AssetType, Holding } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
@@ -9,7 +9,8 @@ import { CHART_DATA_PERFORMANCE, BENCHMARK_DATA } from '../constants';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
-const ProDashboard: React.FC = () => {
+// Institutional-grade Dashboard (Pro View)
+const ProView: React.FC = () => {
     const { activePortfolio } = usePortfolio();
     const holdings = activePortfolio.holdings;
     
@@ -32,158 +33,225 @@ const ProDashboard: React.FC = () => {
     const totalEquity = activePortfolio.totalValue;
 
     return (
-        <div className="space-y-6 animate-fade-in pb-10">
-            {/* KPI Header Row (Matches Pic) */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-8">
-                 <div className="flex-1 text-center">
-                    <div className="text-4xl font-black text-slate-900 dark:text-white mb-1">10</div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Global Regions</div>
-                 </div>
-                 <div className="w-px h-12 bg-slate-100 dark:border-slate-800 hidden md:block"></div>
-                 <div className="flex-1 text-center">
-                    <div className="text-4xl font-black text-emerald-500 mb-1">3.</div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Connected Brokers</div>
-                 </div>
-                 <div className="w-px h-12 bg-slate-100 dark:border-slate-800 hidden md:block"></div>
-                 <div className="flex-1 text-center">
-                    <div className="text-4xl font-black text-brand-500 mb-1">10</div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Currencies</div>
-                 </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-fade-in pb-10">
+            <div className="lg:col-span-3 space-y-5">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                    <div className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex justify-between items-center">
+                        Strategic Pulse <MoreHorizontal className="w-4 h-4" />
+                    </div>
+                    <div className="flex justify-between items-center px-2">
+                        <div className="text-center">
+                            <div className="text-4xl font-black text-slate-900 dark:text-white leading-none">10</div>
+                            <div className="text-[9px] text-slate-400 font-bold uppercase mt-2">Regions</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-4xl font-black text-emerald-500 leading-none">3.</div>
+                            <div className="text-[9px] text-slate-400 font-bold uppercase mt-2">Brokers</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-4xl font-black text-brand-500 leading-none">10</div>
+                            <div className="text-[9px] text-slate-400 font-bold uppercase mt-2">Currs</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                    <div className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6">Master Targets</div>
+                    <div className="h-[160px] relative">
+                         <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={assetAllocation} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={6} dataKey="value">
+                                    {assetAllocation.map((entry, index) => <Cell key={`c-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />)}
+                                </Pie>
+                            </PieChart>
+                         </ResponsiveContainer>
+                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="text-lg font-black text-slate-900 dark:text-white">{(totalEquity/1000).toFixed(0)}k</span>
+                         </div>
+                    </div>
+                    <div className="space-y-2 mt-4">
+                        {assetAllocation.slice(0, 3).map((a, i) => (
+                            <div key={a.name} className="flex items-center justify-between text-[10px] font-bold">
+                                <span className="text-slate-500 uppercase">{a.name}</span>
+                                <span className="text-slate-900 dark:text-white">{((a.value / (totalEquity || 1)) * 100).toFixed(1)}%</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left Col: Targets & Health */}
-                <div className="lg:col-span-3 space-y-6">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Strategy Targets</h3>
-                        <div className="h-[180px] relative">
+            <div className="lg:col-span-6 space-y-5">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Growth Analytics</h3>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Equity Benchmark vs Market Average</div>
+                        </div>
+                        <div className="flex gap-1.5 bg-slate-50 dark:bg-slate-800 p-1 rounded-xl">
+                            {['6M', '1Y', '3Y'].map(t => (
+                                <button key={t} className={`px-3 py-1 text-[9px] font-black rounded-lg transition-all ${t === '1Y' ? 'bg-white dark:bg-slate-700 text-brand-600 shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>{t}</button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={CHART_DATA_PERFORMANCE}>
+                                <defs>
+                                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15}/>
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
+                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} tickFormatter={(v) => `$${v/1000}k`} />
+                                <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', fontSize: '10px'}} />
+                                <Area type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={3} fill="url(#chartGrad)" />
+                                <Line type="monotone" dataKey="sp500" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" dot={false} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-5">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm">
+                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">Momentum Heat</div>
+                        <div className="h-[100px]">
                              <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie data={assetAllocation} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={8} dataKey="value">
-                                        {assetAllocation.map((entry, index) => <Cell key={`c-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                    </Pie>
-                                </PieChart>
+                                <BarChart data={BENCHMARK_DATA.slice(-8)}>
+                                    <Bar dataKey="portfolio" fill="#10b981" radius={[2, 2, 0, 0]} />
+                                </BarChart>
                              </ResponsiveContainer>
-                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <span className="text-xl font-black text-slate-900 dark:text-white">100%</span>
-                             </div>
-                        </div>
-                        <div className="mt-6 space-y-3">
-                            {assetAllocation.map((a, i) => (
-                                <div key={a.name} className="flex items-center justify-between text-[11px] font-bold">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS[i % COLORS.length]}}></div>
-                                        <span className="text-slate-500">{a.name}</span>
-                                    </div>
-                                    <span className="text-slate-900 dark:text-white">{((a.value / (totalEquity || 1)) * 100).toFixed(1)}%</span>
-                                </div>
-                            ))}
                         </div>
                     </div>
-                    
-                    <div className="bg-brand-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-                        <Zap className="absolute top-0 right-0 w-24 h-24 text-white/10 -mr-4 -mt-4" />
-                        <div className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Portfolio Health</div>
-                        <div className="text-2xl font-black mb-4 uppercase tracking-tighter">Excellent</div>
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-[10px] font-bold opacity-80"><span>Efficiency</span><span>95%</span></div>
-                            <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-white w-[95%]"></div></div>
-                            <div className="flex justify-between text-[10px] font-bold opacity-80"><span>Risk Control</span><span>82%</span></div>
-                            <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-white w-[82%]"></div></div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Middle Col: Wide Analytics */}
-                <div className="lg:col-span-6 space-y-6">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Growth Momentum</h3>
-                            <div className="flex gap-2 bg-slate-50 dark:bg-slate-800 p-1 rounded-xl">
-                                {['1M', '6M', '1Y'].map(t => (
-                                    <button key={t} className={`px-4 py-1 text-[10px] font-black rounded-lg ${t === '1Y' ? 'bg-white dark:bg-slate-700 text-brand-600 shadow-sm' : 'text-slate-400'}`}>{t}</button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={CHART_DATA_PERFORMANCE}>
-                                    <defs>
-                                        <linearGradient id="mainGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15}/>
-                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} tickFormatter={(v) => `$${v/1000}k`} />
-                                    <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '16px'}} />
-                                    <Area type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={4} fill="url(#mainGrad)" />
-                                    <Line type="monotone" dataKey="sp500" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm">
+                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">Risk Variance</div>
+                        <div className="h-[100px]">
+                             <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={BENCHMARK_DATA.slice(-8)}>
+                                    <Area type="step" dataKey="nasdaq" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} />
                                 </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Daily Returns</div>
-                            <div className="h-[120px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={BENCHMARK_DATA.slice(-8)}>
-                                        <Bar dataKey="portfolio" fill="#10b981" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Market Variance</div>
-                            <div className="h-[120px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={BENCHMARK_DATA.slice(-8)}>
-                                        <Area type="step" dataKey="nasdaq" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
+                             </ResponsiveContainer>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Right Col: Sector & Concentration */}
-                <div className="lg:col-span-3 space-y-6">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Market Sectoring</h3>
-                        <div className="h-[180px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie data={sectorAllocation} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={8} dataKey="value">
-                                        {sectorAllocation.map((entry, index) => <Cell key={`s-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />)}
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="mt-4 space-y-2">
-                             {sectorAllocation.map((s, i) => (
-                                <div key={s.name} className="flex items-center justify-between text-[10px] font-bold">
-                                    <span className="text-slate-500 uppercase tracking-tighter">{s.name}</span>
-                                    <span className="text-slate-900 dark:text-white font-black">{((s.value / (totalEquity || 1)) * 100).toFixed(1)}%</span>
-                                </div>
-                             ))}
+            <div className="lg:col-span-3 space-y-5">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
+                    <div className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6">Concentration</div>
+                    <div className="h-[180px] relative">
+                         <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={sectorAllocation} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={8} dataKey="value">
+                                    {sectorAllocation.map((entry, index) => <Cell key={`s-${index}`} fill={COLORS[(index+2) % COLORS.length]} stroke="none" />)}
+                                </Pie>
+                            </PieChart>
+                         </ResponsiveContainer>
+                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="text-lg font-black text-slate-900 dark:text-white">100%</span>
+                         </div>
+                    </div>
+                    <div className="space-y-2 mt-4">
+                        {sectorAllocation.slice(0, 3).map((s, i) => (
+                            <div key={s.name} className="flex items-center justify-between text-[10px] font-bold">
+                                <span className="text-slate-500 uppercase">{s.name}</span>
+                                <span className="text-slate-900 dark:text-white">{((s.value / (totalEquity || 1)) * 100).toFixed(1)}%</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-brand-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                    <Zap className="absolute top-0 right-0 w-20 h-20 text-white/10 -mr-2 -mt-2" />
+                    <div className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Health Shield</div>
+                    <div className="text-2xl font-black mb-4">EXCELLENT</div>
+                    <div className="space-y-3">
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-[9px] font-black opacity-80 uppercase"><span>Efficiency</span><span>95%</span></div>
+                            <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-white w-[95%]"></div></div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Risk Exposure</h3>
-                        <div className="space-y-4">
-                            {[72, 45, 18, 32].map((v, i) => (
-                                <div key={i} className="space-y-1.5">
-                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-500" style={{ width: `${v}%` }}></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+// Reverted Clean Overview (Old Data + Chart)
+const PortfolioOverview: React.FC = () => {
+    const { activePortfolio } = usePortfolio();
+    const holdings = activePortfolio.holdings;
+    
+    const totalEquity = activePortfolio.totalValue;
+    const totalGain = holdings.reduce((acc, h) => acc + (h.shares * (h.currentPrice - h.avgPrice)), 0);
+    const gainPercent = totalEquity > 0 ? (totalGain / (totalEquity - totalGain)) * 100 : 0;
+
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm transition-all hover:translate-y-[-4px]">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-brand-500/10 rounded-lg text-brand-500"><TrendingUp className="w-5 h-5" /></div>
+                        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Net Return</span>
                     </div>
+                    <div className={`text-3xl font-black ${totalGain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {totalGain >= 0 ? '+' : '-'}${Math.abs(totalGain).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </div>
+                    <div className={`text-sm font-bold mt-1 ${totalGain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {gainPercent.toFixed(2)}% Lifetime Growth
+                    </div>
+                </div>
+                
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm transition-all hover:translate-y-[-4px]">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><PieChartIcon className="w-5 h-5" /></div>
+                        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Asset Diversity</span>
+                    </div>
+                    <div className="text-3xl font-black text-slate-900 dark:text-white">
+                        {new Set(holdings.map(h => h.sector)).size} Sectors
+                    </div>
+                    <div className="text-sm text-slate-400 mt-1 font-medium">Spread across {holdings.length} assets</div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm transition-all hover:translate-y-[-4px]">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500"><Globe className="w-5 h-5" /></div>
+                        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Geography</span>
+                    </div>
+                    <div className="text-3xl font-black text-slate-900 dark:text-white">
+                        {new Set(holdings.map(h => h.country)).size} Countries
+                    </div>
+                    <div className="text-sm text-slate-400 mt-1 font-medium">Global exposure level high</div>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Capital Appreciation</h3>
+                    <p className="text-sm text-slate-500">Historical performance relative to cost basis</p>
+                  </div>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                    <Activity className="w-5 h-5 text-brand-500" />
+                  </div>
+                </div>
+                <div className="h-[350px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={CHART_DATA_PERFORMANCE}>
+                            <defs>
+                                <linearGradient id="colorOverview" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15}/>
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} tickFormatter={(v) => `$${v/1000}k`} />
+                            <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff'}} />
+                            <Area type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={4} fill="url(#colorOverview)" animationDuration={1500} />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>
@@ -316,7 +384,7 @@ const RebalanceDashboard: React.FC = () => {
 
 const PortfolioView: React.FC = () => {
   const { activePortfolio, viewStock, openAddAssetModal, deleteHolding } = usePortfolio();
-  const [viewMode, setViewMode] = useState<'pro' | 'holdings' | 'performance' | 'rebalance'>('pro');
+  const [viewMode, setViewMode] = useState<'overview' | 'pro' | 'holdings' | 'performance' | 'rebalance'>('overview');
   const [holdingViewType, setHoldingViewType] = useState<'list' | 'cards'>('cards');
   const [performanceTimeframe, setPerformanceTimeframe] = useState<'1M' | '6M' | 'YTD' | '1Y' | 'ALL'>('1Y');
   
@@ -337,9 +405,12 @@ const PortfolioView: React.FC = () => {
             <button onClick={() => openAddAssetModal()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-600 text-white hover:bg-brand-500 transition-all shadow-lg shadow-brand-600/20">
                 <Plus className="w-4 h-4" /> Add Asset
             </button>
-            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
-                <button onClick={() => setViewMode('pro')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'pro' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
-                    Pro Dashboard
+            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar">
+                <button onClick={() => setViewMode('overview')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'overview' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                    Overview
+                </button>
+                <button onClick={() => setViewMode('pro')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'pro' ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                    Pro View
                 </button>
                 <button onClick={() => setViewMode('holdings')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'holdings' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
                     Holdings
@@ -354,7 +425,8 @@ const PortfolioView: React.FC = () => {
         </div>
       </div>
 
-      {viewMode === 'pro' && <ProDashboard />}
+      {viewMode === 'overview' && <PortfolioOverview />}
+      {viewMode === 'pro' && <ProView />}
       {viewMode === 'rebalance' && <RebalanceDashboard />}
 
       {viewMode === 'holdings' && (
