@@ -1,9 +1,11 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { Portfolio } from '../types';
+import { envConfig } from './envConfig';
 
-// Initialize the client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the client with environment-aware API key
+const apiKey = envConfig.getConfig().geminiApiKey;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Persistent Cache Helpers to prevent 429s across reloads
 const CACHE_PREFIX = 'wealthos_cache_v2_';
@@ -43,6 +45,11 @@ const generatePortfolioHash = (portfolio: Portfolio) => {
 const handleGeminiError = (error: any, defaultMessage: string): string => {
     console.warn("Gemini API Error:", error);
     
+    // Check if AI is not configured
+    if (!apiKey) {
+        return "⚠️ AI not configured. Please set GEMINI_API_KEY in your environment.";
+    }
+    
     let errorStr = '';
     try {
         errorStr = JSON.stringify(error);
@@ -72,6 +79,11 @@ interface PortfolioContextData {
 }
 
 export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: PortfolioContextData): Promise<string> => {
+  // Return early if AI is not configured
+  if (!ai) {
+    return "💡 AI insights are disabled. Configure GEMINI_API_KEY to enable personalized portfolio analysis.";
+  }
+
   const hash = generatePortfolioHash(portfolio);
   const cacheKey = `insight_${hash}`;
   
@@ -114,7 +126,7 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: prompt,
       config: {
         temperature: 0.6,
@@ -130,6 +142,14 @@ export const generatePortfolioInsight = async (portfolio: Portfolio, metrics?: P
 };
 
 export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: string[], risks: string[] }> => {
+  // Return fallback if AI is not configured
+  if (!ai) {
+    return {
+      strengths: ["Strong market position", "Solid fundamentals", "Good cash flow"],
+      risks: ["Market volatility", "Economic uncertainty", "Industry competition"]
+    };
+  }
+
   const cacheKey = `risks_v2_${symbol}`;
   const cached = getFromCache<{ strengths: string[], risks: string[] }>(cacheKey);
   if (cached) return cached;
@@ -138,7 +158,7 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
     const prompt = `Analyze ${symbol} for a sophisticated investor. List 3 strengths and 3 risks focusing on fundamental analysis, cash flow, and market positioning. Return in JSON format.`;
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -167,13 +187,18 @@ export const analyzeStockRisks = async (symbol: string): Promise<{ strengths: st
 };
 
 export const analyzeStock = async (symbol: string): Promise<string> => {
+  // Return early if AI is not configured
+  if (!ai) {
+    return "💡 AI analysis is disabled. Configure GEMINI_API_KEY to enable stock insights.";
+  }
+
   const cacheKey = `analysis_v2_${symbol}`;
   const cached = getFromCache<string>(cacheKey);
   if (cached) return cached;
 
   try {
     const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash-exp',
         contents: `Analyze ${symbol} financials (P/E, margins, debt) and provide a concise fundamental outlook in 100 words.`,
     });
     

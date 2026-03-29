@@ -40,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   // Only show Admin for authorized users
   if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
-    navItems.push({ id: 'admin', label: 'Admin Panel', icon: Shield });
+    navItems.push({ id: 'admin-dashboard', label: 'Admin Panel', icon: Shield });
   }
 
   const handleNavigation = (view: ViewState) => {
