@@ -1,18 +1,55 @@
+/**
+ * Supabase Client Configuration
+ * 
+ * Uses environment variables for sensitive configuration.
+ * Falls back to mock mode if not configured.
+ */
 
 import { createClient } from '@supabase/supabase-js';
 
-// Explicit configuration provided by user
-const SUPABASE_URL = 'https://oslvdgslfsjdujyemyfo.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zbHZkZ3NsZnNqZHVqeWVteWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2OTkzMjQsImV4cCI6MjA3OTI3NTMyNH0.YHJM8pIDCT7q-1Bsg0TVczeM2VE0paXJ6VWTDtXQ6to';
+// Use environment variables with fallbacks
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Flag to indicate configuration is present
-export const isSupabaseConfigured = true;
+export const isSupabaseConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-console.log('Supabase Client Initialized', { url: SUPABASE_URL });
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// Mock client for when Supabase is not configured
+const createMockClient = () => ({
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  }
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: async () => ({ error: new Error('Supabase not configured') }),
+    signInWithOAuth: async () => ({ error: new Error('Supabase not configured') }),
+    signUp: async () => ({ error: new Error('Supabase not configured') }),
+    resetPasswordForEmail: async () => ({ error: new Error('Supabase not configured') }),
+    signOut: async () => ({ error: null }),
+  },
+  from: () => ({
+    select: () => ({
+      eq: () => ({
+        single: async () => ({ data: null, error: new Error('Supabase not configured') }),
+        maybeSingle: async () => ({ data: null, error: null }),
+        insert: async () => ({ error: new Error('Supabase not configured') }),
+        update: () => ({ eq: async () => ({ error: new Error('Supabase not configured') }) }),
+        delete: () => ({ eq: async () => ({ error: new Error('Supabase not configured') }) }),
+      }),
+    }),
+  }),
 });
+
+// Initialize client conditionally
+export const supabase = isSupabaseConfigured
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    })
+  : createMockClient() as any;
+
+if (!isSupabaseConfigured) {
+  console.warn('Supabase not configured. Running in mock mode.');
+} else {
+  console.log('Supabase Client Initialized', { url: SUPABASE_URL });
+}

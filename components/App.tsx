@@ -6,9 +6,11 @@ import ResearchView from './components/ResearchView';
 import CommunityView from './components/CommunityView';
 import DashboardView from './components/DashboardView';
 import DividendsView from './components/DividendsView';
+import EnhancedDividendsView from './components/EnhancedDividendsView';
 import AnalyticsView from './components/AnalyticsView';
 import SettingsView from './components/SettingsView';
 import AdminView from './components/AdminView';
+import AdminDashboard from './components/AdminDashboard';
 import NetWorthView from './components/NetWorthView';
 import KnowledgeBaseView from './components/KnowledgeBaseView';
 import AddAssetModal from './components/AddAssetModal';
@@ -61,9 +63,10 @@ const AuthenticatedApp: React.FC = () => {
           {activeView === 'research' && <ResearchView />}
           {activeView === 'analytics' && <AnalyticsView />}
           {activeView === 'community' && <CommunityView />}
-          {activeView === 'dividends' && <DividendsView />}
+          {activeView === 'dividends' && <EnhancedDividendsView />}
           {activeView === 'settings' && <SettingsView />}
           {activeView === 'admin' && <AdminView />}
+          {activeView === 'admin-dashboard' && <AdminDashboard />}
           {activeView === 'knowledge-base' && <KnowledgeBaseView />}
         </div>
         
